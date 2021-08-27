@@ -35,7 +35,7 @@
 #endif
 
 #ifndef RAYCHEL_NO_GSL
-    #include "gsl/gsl"
+    #include "gsl/gsl_assert"
 #endif
 
 #define RAYCHEL_STRINGIFY_IMPL(x) #x
