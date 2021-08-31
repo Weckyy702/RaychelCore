@@ -46,13 +46,14 @@ namespace Raychel {
         if(lhs.data() == rhs.data()) {
             return true;
         }
-
-        bool equal = true;
+        
         for(std::size_t i = 0; i < lhs.size(); i++) {
-            equal &= (std::tolower(lhs[i]) == std::tolower(rhs[i]));
+            if(std::tolower(lhs[i]) != std::tolower(rhs[i])) {
+                return false;   
+            }
         }
 
-        return equal;
+        return true;
     }
 
     class ArgumentParser
