@@ -10,11 +10,7 @@ namespace Raychel {
     {
 
     public:
-        enum class ValueType { bool_, int_, float_, string_ };
-
-        explicit CommandLineValueReference(bool& value) //NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
-            : type_{ValueType::bool_}, as_bool_{value}
-        {}
+        enum class ValueType { int_, float_, string_ };
 
         explicit CommandLineValueReference(int& value) //NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
             : type_{ValueType::int_}, as_int_{value}
@@ -61,11 +57,6 @@ namespace Raychel {
             return type_;
         }
 
-        [[nodiscard]] bool& as_bool() const noexcept
-        {
-            return as_bool_; //NOLINT(cppcoreguidelines-pro-type-union-access)
-        }
-
         [[nodiscard]] int& as_int() const noexcept
         {
             return as_int_; //NOLINT(cppcoreguidelines-pro-type-union-access)
@@ -88,13 +79,12 @@ namespace Raychel {
         void _assign_from(const CommandLineValueReference& rhs) noexcept
         {
             //This might cause UB. let's find out in testing ;)
-            as_bool_ = rhs.as_bool_; //NOLINT(cppcoreguidelines-pro-type-union-access)
+            as_int_ = rhs.as_int_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
 
         ValueType type_;
         union
         {
-            std::reference_wrapper<bool> as_bool_;
             std::reference_wrapper<int> as_int_;
             std::reference_wrapper<float> as_float_;
             std::reference_wrapper<std::string> as_string_;
