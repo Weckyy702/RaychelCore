@@ -10,6 +10,13 @@ add_executable(Unit_test
 )
 
 target_compile_features(Unit_test PUBLIC cxx_std_20)
+target_compile_options(Unit_test PUBLIC
+    -Wall
+    -Wextra
+    -Wconversion
+    -Werror
+    -Wpedantic
+)
 
 target_link_libraries(Unit_test
     INTERFACE RaychelCore
@@ -35,6 +42,13 @@ add_executable(ArgumentParserTest
 )
 
 target_compile_features(ArgumentParserTest PUBLIC cxx_std_20)
+target_compile_options(ArgumentParserTest PUBLIC
+    -Wall
+    -Wextra
+    -Wconversion
+    -Werror
+    -Wpedantic
+)
 
 target_link_libraries(ArgumentParserTest
     INTERFACE RaychelCore
