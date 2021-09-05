@@ -1,4 +1,3 @@
-find_package(RaychelCore REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(RaychelLogger REQUIRED)
 
@@ -51,7 +50,7 @@ target_compile_options(ArgumentParserTest PUBLIC
 )
 
 target_link_libraries(ArgumentParserTest
-    INTERFACE RaychelCore
+    PUBLIC RaychelCore
     PUBLIC RaychelLogger
     PUBLIC Catch2::Catch2
 )
