@@ -235,7 +235,7 @@ namespace Raychel {
                 case Type::float_:
                     return _parse_float(value_str, value);
                 case Type::string_:
-                    value.as_string() = value_str;
+                    value.as_string_ref() = value_str;
                     return true;
             }
             RAYCHEL_ASSERT_NOT_REACHED;
@@ -243,7 +243,7 @@ namespace Raychel {
 
         [[nodiscard]] static bool _parse_int(std::string_view value_str, const CommandLineValueReference& value) noexcept
         {
-            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_int());
+            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_int_ref());
 
             if (res.ec != std::errc{}) {
                 Logger::error("Could not parse value '", value_str, "' as an int!\n");
@@ -254,7 +254,7 @@ namespace Raychel {
 
         [[nodiscard]] static bool _parse_float(std::string_view value_str, const CommandLineValueReference& value) noexcept
         {
-            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_float());
+            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_float_ref());
 
             if (res.ec != std::errc{}) {
                 Logger::error("Could not parse value '", value_str, "' as a float!\n");

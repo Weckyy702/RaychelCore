@@ -57,17 +57,17 @@ namespace Raychel {
             return type_;
         }
 
-        [[nodiscard]] int& as_int() const noexcept
+        [[nodiscard]] int& as_int_ref() const noexcept
         {
             return as_int_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
 
-        [[nodiscard]] float& as_float() const noexcept
+        [[nodiscard]] float& as_float_ref() const noexcept
         {
             return as_float_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
 
-        [[nodiscard]] std::string& as_string() const noexcept
+        [[nodiscard]] std::string& as_string_ref() const noexcept
         {
             return as_string_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
