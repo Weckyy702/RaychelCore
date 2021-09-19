@@ -46,11 +46,11 @@ namespace Raychel {
         std::string description;
 
         auto operator<=>(const CommandLineKey& rhs) const noexcept
-    {
+        {
             //Two CommandLineKeys can neither have the same long nor short name
             if((long_name == rhs.long_name) || (short_name == rhs.short_name)) {
                 return std::strong_ordering::equivalent;
-    }
+            }
             return long_name <=> rhs.long_name;
         }
     };
@@ -116,7 +116,7 @@ namespace Raychel {
         * \param argv argv that was given to main()
         * \return wether parsing was successful (most programs exit if parsing fails)
         */
-        [[nodiscard]] bool parse(int argc, char** argv) noexcept
+        [[nodiscard]] bool parse(int argc, char const* const* argv) noexcept
         {
             //-h or --help should not mutate any state and exit immediately
             if (handle_help_arg(argc, argv)) {
@@ -249,7 +249,7 @@ namespace Raychel {
 
 
 
-        [[nodiscard]] bool handle_help_arg(int argc, char** argv) noexcept
+        [[nodiscard]] bool handle_help_arg(int argc, char const* const* argv) noexcept
         {
             for (int i = 0; i < argc; i++) {
                 std::string_view arg = argv[i]; //NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
