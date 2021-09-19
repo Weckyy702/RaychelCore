@@ -3,8 +3,7 @@
 
 TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
 {
-    Logger::disableColor();
-    //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style string are pain
+    //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style strings are pain
     const char* _argv[] = {
         "/path/to/binary",
         "--iterations",
@@ -26,7 +25,7 @@ TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
     REQUIRE(ap.add_int_arg("iterations", "n", "number of iterations", state.i));
     REQUIRE(!ap.add_string_arg("iterations", "n", "number of iterations, again", state.str));
 
-    //NOLINTNEXTLINE(hicpp-no-array-decay, cppcoreguidelines-pro-bounds-array-to-pointer-decay): C-Style string are pain
+    //NOLINTNEXTLINE(hicpp-no-array-decay, cppcoreguidelines-pro-bounds-array-to-pointer-decay): C-Style strings are pain
     REQUIRE(ap.parse(_argc, _argv));
 
     REQUIRE(state.i == 10);
