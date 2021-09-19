@@ -45,13 +45,15 @@ namespace Raychel {
         std::string short_name;
         std::string description;
 
-        auto operator<=>(const CommandLineKey&) const noexcept=default;
-    };
-
-    inline std::ostream& operator<<(std::ostream& os, const CommandLineKey& obj)
+        auto operator<=>(const CommandLineKey& rhs) const noexcept
     {
-        return os << "{ '" << obj.long_name << "', '" << obj.short_name << "' }";
+            //Two CommandLineKeys can neither have the same long nor short name
+            if((long_name == rhs.long_name) || (short_name == rhs.short_name)) {
+                return std::strong_ordering::equivalent;
     }
+            return long_name <=> rhs.long_name;
+        }
+    };
 
     class ArgumentParser
     {
