@@ -39,24 +39,6 @@
 
 namespace Raychel {
 
-    inline bool case_insensitive_equal(std::string_view lhs, std::string_view rhs) noexcept
-    {
-        if (lhs.size() != rhs.size()) {
-            return false;
-        }
-        if (lhs.data() == rhs.data()) {
-            return true;
-        }
-
-        for (std::size_t i = 0; i < lhs.size(); i++) {
-            if (std::tolower(lhs[i]) != std::tolower(rhs[i])) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     struct CommandLineKey
     {
         std::string long_name;
