@@ -14,6 +14,8 @@ TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
         "5",
         "-n",
         "10",
+        "-f",
+        "-123.45",
         "one_more_option_just_for_the_fun_of_it"
     };
     const int _argc = sizeof(_argv) / sizeof(_argv[0]);
@@ -26,6 +28,7 @@ TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
 
     Raychel::ArgumentParser ap;
 
+    REQUIRE(ap.add_float_arg("arg", "f", "float arg", state.f));
     REQUIRE(ap.add_int_arg("iterations", "n", "number of iterations", state.i));
     REQUIRE(!ap.add_string_arg("iterations", "n", "number of iterations, again", state.str));
 
@@ -33,6 +36,6 @@ TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
     REQUIRE(ap.parse(_argc, _argv));
 
     REQUIRE(state.i == 10);
-    REQUIRE(state.f == 0.0);
+    REQUIRE(state.f == -123.45F);
     REQUIRE(state.str.empty());
 }

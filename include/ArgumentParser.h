@@ -31,39 +31,15 @@
 #include <charconv>
 #include <map>
 #include <optional>
-#include <string>
+#include <sstream>
 #include <string_view>
+
+#include "CommandLineHelper.h"
 #include "CommandLineValueReference.h"
 #include "RaychelLogger/Logger.h"
 #include "Raychel_assert.h"
 
 namespace Raychel {
-
-    struct CommandLineKey
-    {
-        std::string long_name;
-        std::string short_name;
-        std::string description;
-
-        #if RAYCHEL_HAS_SPACESHIP_OP
-        auto operator<=>(const CommandLineKey& rhs) const noexcept
-        {
-            //Two CommandLineKeys can neither have the same long nor short name
-            if((long_name == rhs.long_name) || (short_name == rhs.short_name)) {
-                return std::strong_ordering::equivalent;
-            }
-            return long_name <=> rhs.long_name;
-        }
-        #else
-        bool operator<(const CommandLineKey& rhs) const noexcept
-        {
-            if((long_name == rhs.long_name) || (short_name == rhs.short_name)) {
-                return false;
-            }
-            return long_name < rhs.long_name; //NOLINT: what?
-        }
-        #endif
-    };
 
     class ArgumentParser
     {
@@ -117,7 +93,6 @@ namespace Raychel {
         {
             return _add_arg(name, short_name, description, value_ref);
         }
-
 
         /**
         * \brief Parse the command line arguments and print usage string if parsing fails
@@ -175,8 +150,6 @@ namespace Raychel {
             return arguments_.insert({key, CommandLineValueReference{value_ref}}).second;
         }
 
-
-
         [[nodiscard]] bool _parse_long_arg(std::string_view current_arg, std::string_view value_str) noexcept
         {
             const auto pair_opt = _find_value_reference_for_key(current_arg, true);
@@ -197,8 +170,6 @@ namespace Raychel {
             return _populate_value_ref(value_str, pair_opt->second);
         }
 
-
-
         [[nodiscard]] std::optional<ArgumentMap_t::value_type>
         _find_value_reference_for_key(std::string_view arg_key, bool long_arg) const noexcept
         {
@@ -206,7 +177,7 @@ namespace Raychel {
                 if (long_arg) {
                     return key.long_name == arg_key;
                 }
-            return key.short_name == arg_key;
+                return key.short_name == arg_key;
             };
 
             for (const auto& pair : arguments_) {
@@ -216,8 +187,6 @@ namespace Raychel {
             }
             return std::nullopt;
         }
-
-
 
         [[nodiscard]] static bool _populate_value_ref(std::string_view value_str, const CommandLineValueReference& value) noexcept
         {
@@ -248,16 +217,26 @@ namespace Raychel {
 
         [[nodiscard]] static bool _parse_float(std::string_view value_str, const CommandLineValueReference& value) noexcept
         {
-            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_float_ref());
+            if constexpr (details::std_has_float_from_chars_v) {
+                const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_float_ref());
 
-            if (res.ec != std::errc{}) {
+                if (res.ec != std::errc{}) {
+                    Logger::error("Could not parse value '", value_str, "' as a float!\n");
+                    return false;
+                }
+                return true;
+            } else {
+                std::stringstream interpreter;
+                interpreter << value_str;
+                float f = 0.0F;
+                if (interpreter >> f) {
+                    value.as_float_ref() = f;
+                    return true;
+                }
                 Logger::error("Could not parse value '", value_str, "' as a float!\n");
                 return false;
             }
-            return true;
         }
-
-
 
         [[nodiscard]] bool handle_help_arg(int argc, char const* const* argv) noexcept
         {
