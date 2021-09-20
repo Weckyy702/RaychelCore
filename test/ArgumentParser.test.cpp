@@ -1,5 +1,9 @@
 #include "ArgumentParser.h"
-#include <catch2/catch.hpp>
+#if __has_include("catch2/catch.hpp")
+#include "catch2/catch.hpp"
+#else
+#include "catch2/catch_all.hpp"
+#endif
 
 TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
 {
