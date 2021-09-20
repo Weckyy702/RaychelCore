@@ -28,6 +28,8 @@
 #ifndef RAYCHEL_COMPAT_H
 #define RAYCHEL_COMPAT_H
 
+#include <version>
+
 #define RAYCHEL_OS_LINUX 0
 #define RAYCHEL_OS_WIN32 1
 #define RAYCHEL_OS_DARWIN 2 //Raychel isn't tested on MacOS!
@@ -37,7 +39,7 @@
 #elif defined(_MSC_VER)
     #define RAYCHEL_FUNC_NAME __FUNCSIG__
 #else
-    #error "Unknown compiler!"
+    #define RAYCHEL_FUNC_NAME __func__
 #endif
 
 #ifdef __linux
@@ -48,6 +50,12 @@
     #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_DARWIN
 #else
     #error "Unknown OS!"
+#endif
+
+#if __cpp_lib_three_way_comparison >= 201907L
+    #define RAYCHEL_HAS_SPACESHIP_OP 1
+#else
+    #define RAYCHEL_HAS_SPACESHIP_OP 0
 #endif
 
 #endif //!RAYCHEL_COMPAT_H
