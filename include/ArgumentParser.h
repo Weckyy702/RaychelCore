@@ -45,6 +45,7 @@ namespace Raychel {
         std::string short_name;
         std::string description;
 
+        #if RAYCHEL_HAS_SPACESHIP_OP
         auto operator<=>(const CommandLineKey& rhs) const noexcept
         {
             //Two CommandLineKeys can neither have the same long nor short name
@@ -53,6 +54,15 @@ namespace Raychel {
             }
             return long_name <=> rhs.long_name;
         }
+        #else
+        bool operator<(const CommandLineKey& rhs) const noexcept
+        {
+            if((long_name == rhs.long_name) || (short_name == rhs.short_name)) {
+                return false;
+            }
+            return long_name < rhs.long_name; //NOLINT: what?
+        }
+        #endif
     };
 
     class ArgumentParser
