@@ -34,10 +34,6 @@
     #include "RaychelLogger/Logger.h"
 #endif
 
-#ifndef RAYCHEL_NO_GSL
-    #include "gsl/gsl_assert"
-#endif
-
 #define RAYCHEL_STRINGIFY_IMPL(x) #x
 
 #define RAYCHEL_STRINGIFY(x) RAYCHEL_STRINGIFY_IMPL(x)
@@ -51,14 +47,10 @@
         std::terminate();
 #endif
 
-#if defined(RAYCHEL_DEBUG) || !defined(NDEBUG) || defined(RAYCHEL_NO_GSL)
-    #define RAYCHEL_ASSERT(exp)                                                                                                  \
-        if (!(exp)) {                                                                                                            \
-            RAYCHEL_TERMINATE("Assertion '", RAYCHEL_STRINGIFY(exp), "' failed!");                                               \
-        }
-#else
-    #define RAYCHEL_ASSERT(exp) Expects(exp)
-#endif
+#define RAYCHEL_ASSERT(exp)                                                                                                  \
+    if (!(exp)) {                                                                                                            \
+        RAYCHEL_TERMINATE("Assertion '", RAYCHEL_STRINGIFY(exp), "' failed!");                                               \
+    }
 
 #define RAYCHEL_ASSERT_NOT_REACHED RAYCHEL_TERMINATE("Assertion failed! Expected to not execute ", __FILE__, ":", __LINE__)
 
