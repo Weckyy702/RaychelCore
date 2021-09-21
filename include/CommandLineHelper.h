@@ -66,16 +66,16 @@ namespace Raychel {
 
     namespace details {
 
-        template <typename = void>
-        struct _std_has_float_from_chars : std::false_type
+        template <typename T, typename = void>
+        struct _std_has_from_chars : std::false_type
         {};
 
-        template <>
-        struct _std_has_float_from_chars<std::void_t<decltype(std::from_chars(
-            std::declval<const char*>(), std::declval<const char*>(), std::declval<float&>()))>> : std::true_type
+        template <typename T>
+        struct _std_has_from_chars<T, std::void_t<decltype(std::from_chars(
+            std::declval<const char*>(), std::declval<const char*>(), std::declval<T&>()))>> : std::true_type
         {};
 
-        constexpr auto std_has_float_from_chars_v = _std_has_float_from_chars<>::value;
+        constexpr auto std_has_float_from_chars_v = _std_has_from_chars<float>::value;
     } // namespace details
 
 } // namespace Raychel
