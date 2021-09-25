@@ -48,6 +48,7 @@
     #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_WIN32
 #elif defined(__APPLE__)
     #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_DARWIN
+    #pragma message("Please keep in mind that this version of RaychelCore is not tested on MacOS")
 #else
     #error "Unknown OS!"
 #endif
@@ -56,6 +57,12 @@
     #define RAYCHEL_HAS_SPACESHIP_OP 1
 #else
     #define RAYCHEL_HAS_SPACESHIP_OP 0
+#endif
+
+#if  __cpp_lib_to_chars >= 201611L
+    #define RAYCHEL_HAS_TO_CHARS 1
+#else
+    #define RAYCHEL_HAS_TO_CHARS 0
 #endif
 
 #endif //!RAYCHEL_COMPAT_H

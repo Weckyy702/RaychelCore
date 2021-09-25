@@ -37,7 +37,6 @@
 #include "CommandLineHelper.h"
 #include "CommandLineValueReference.h"
 #include "RaychelLogger/Logger.h"
-#include "Raychel_assert.h"
 
 namespace Raychel {
 
@@ -188,52 +187,69 @@ namespace Raychel {
             return std::nullopt;
         }
 
-        [[nodiscard]] static bool _populate_value_ref(std::string_view value_str, const CommandLineValueReference& value) noexcept
+        [[nodiscard]] static bool
+        _populate_value_ref(std::string_view value_string, const CommandLineValueReference& value_ref) noexcept
         {
             using Type = CommandLineValueReference::ValueType;
 
-            switch (value.type()) {
+            switch (value_ref.type()) {
                 case Type::int_:
-                    return _parse_int(value_str, value);
+                    return _parse_int(value_string, value_ref);
                 case Type::float_:
-                    return _parse_float(value_str, value);
+                    return _parse_float(value_string, value_ref);
                 case Type::string_:
-                    value.as_string_ref() = value_str;
+                    value_ref.as_string_ref() = value_string;
                     return true;
             }
             RAYCHEL_ASSERT_NOT_REACHED;
         }
 
-        [[nodiscard]] static bool _parse_int(std::string_view value_str, const CommandLineValueReference& value) noexcept
+        template<typename T = int>
+        [[nodiscard]] static bool _parse_int(std::string_view value_string, const CommandLineValueReference& value_ref) noexcept
         {
-            const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_int_ref());
+            static_assert(std::is_same_v<T, int>, "Implementation bug!");
+            if constexpr(details::_std_has_from_chars<T>::value) {
+                const auto [_, ec] = std::from_chars<T>(std::begin(value_string), std::end(value_string), value_ref.as_int_ref());
 
-            if (res.ec != std::errc{}) {
-                Logger::error("Could not parse value '", value_str, "' as an int!\n");
+                if (ec != std::errc{}) {
+                    Logger::error("Could not parse value '", value_string, "' as an int!\n");
+                    return false;
+                }
+            return true;
+            } else {
+                std::stringstream interpreter;
+                interpreter << value_string;
+                int f = 0.0F;
+                if (interpreter >> f) {
+                    value_ref.as_int_ref() = f;
+                    return true;
+                }
+                Logger::error("Could not parse value '", value_string, "' as an int!\n");
                 return false;
             }
-            return true;
         }
 
-        [[nodiscard]] static bool _parse_float(std::string_view value_str, const CommandLineValueReference& value) noexcept
+        template <typename T = float>
+        [[nodiscard]] static bool _parse_float(std::string_view value_string, const CommandLineValueReference& value_ref) noexcept
         {
-            if constexpr (details::std_has_float_from_chars_v) {
-                const auto res = std::from_chars(std::begin(value_str), std::end(value_str), value.as_float_ref());
+            static_assert(std::is_same_v<T, float>, "Implementation bug!");
+            if constexpr (details::_std_has_from_chars<T>::value) {
+                const auto [_, ec] = std::from_chars(std::begin(value_string), std::end(value_string), static_cast<T&>(value_ref.as_float_ref()));
 
-                if (res.ec != std::errc{}) {
-                    Logger::error("Could not parse value '", value_str, "' as a float!\n");
+                if (ec != std::errc{}) {
+                    Logger::error("Could not parse value '", value_string, "' as a float!\n");
                     return false;
                 }
                 return true;
             } else {
                 std::stringstream interpreter;
-                interpreter << value_str;
+                interpreter << value_string;
                 float f = 0.0F;
                 if (interpreter >> f) {
-                    value.as_float_ref() = f;
+                    value_ref.as_float_ref() = f;
                     return true;
                 }
-                Logger::error("Could not parse value '", value_str, "' as a float!\n");
+                Logger::error("Could not parse value '", value_string, "' as a float!\n");
                 return false;
             }
         }
