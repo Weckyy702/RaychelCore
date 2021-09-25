@@ -22,7 +22,7 @@ target_include_directories(RaychelCore INTERFACE
 )
 
 if(NOT RAYCHEL_LOGGER_EXTERNAL)
-find_package(RaychelLogger REQUIRED)
+    find_package(RaychelLogger REQUIRED)
 endif()
 target_link_libraries(RaychelCore INTERFACE
     RaychelLogger
