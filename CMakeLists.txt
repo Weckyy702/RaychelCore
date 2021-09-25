@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 
 project(RaychelCore VERSION 0.0.1 LANGUAGES CXX)
-
+#DEPENDENCIES
+include(cmake/find_dependencies.cmake)
 
 
 #HEADER FILES
@@ -20,7 +21,9 @@ target_include_directories(RaychelCore INTERFACE
     $<INSTALL_INTERFACE:${RAYCHELCORE_INSTALLED_HEADER_DIR}> # for client in install mode
 )
 
+if(NOT RAYCHEL_LOGGER_EXTERNAL)
 find_package(RaychelLogger REQUIRED)
+endif()
 target_link_libraries(RaychelCore INTERFACE
     RaychelLogger
 )

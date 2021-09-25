@@ -1,7 +1,7 @@
-include(../cmake/find_dependencies.cmake)
-
 if(NOT CATCH_2_EXTERNAL)
     find_package(Catch2 CONFIG REQUIRED)
+endif()
+if(NOT RAYCHEL_LOGGER_EXTERNAL)
     find_package(RaychelLogger REQUIRED)
 endif()
 

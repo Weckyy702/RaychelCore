@@ -17,3 +17,20 @@ if(NOT Catch2_FOUND)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${Catch2_SOURCE_DIR}/contrib)
 
 endif()
+
+find_package(RaychelLogger QUIET)
+
+if(NOT RaychelLogger_FOUND)
+
+    message(STATUS "Could not find a local installation of RaychelLogger, downloading one off github...")
+
+    FetchContent_Declare(RAYCHEL_LOGGER
+        GIT_REPOSITORY "https://github.com/Weckyy702/RaychelLogger"
+        GIT_TAG "main"
+    )
+
+    FetchContent_MakeAvailable(RAYCHEL_LOGGER)
+
+    set(RAYCHEL_LOGGER_EXTERNAL true)
+
+endif()
