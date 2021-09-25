@@ -1,5 +1,9 @@
-find_package(Catch2 CONFIG REQUIRED)
-find_package(RaychelLogger REQUIRED)
+include(../cmake/find_dependencies.cmake)
+
+if(NOT CATCH_2_EXTERNAL)
+    find_package(Catch2 CONFIG REQUIRED)
+    find_package(RaychelLogger REQUIRED)
+endif()
 
 
 file(GLOB_RECURSE RAYCHELCORE_TEST_SOURCES "*.test.cpp")
