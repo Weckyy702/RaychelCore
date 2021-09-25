@@ -1,0 +1,19 @@
+dist: focal
+
+language: cpp
+compiler:
+  - clang
+  - gcc
+
+addons:
+  snap:
+    packages:
+      - cmake
+
+install:
+  - git clone https://github.com/catchorg/Catch2 --branch v2.x
+  - cd Catch2; cmake .; cmake --build . --target install -- -j 2
+
+script:
+  - cmake .
+  - cmake --build . --target all test
