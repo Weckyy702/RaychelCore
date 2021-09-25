@@ -19,7 +19,6 @@ target_compile_options(Unit_test PUBLIC
 
 target_link_libraries(Unit_test PUBLIC
     RaychelCore
-    RaychelLogger
     Catch2::Catch2
 )
 

@@ -41,10 +41,10 @@ namespace Raychel {
             label_ = Logger::startTimer(label);
         }
 
-        ScopedTimer(const ScopedTimer&)=delete;
-        ScopedTimer(ScopedTimer&&)=delete;
-        ScopedTimer& operator=(const ScopedTimer&)=delete;
-        ScopedTimer& operator=(ScopedTimer&&)=delete;
+        ScopedTimer(const ScopedTimer&) = delete;
+        ScopedTimer(ScopedTimer&&) = delete;
+        ScopedTimer& operator=(const ScopedTimer&) = delete;
+        ScopedTimer& operator=(ScopedTimer&&) = delete;
 
         ~ScopedTimer() noexcept
         {

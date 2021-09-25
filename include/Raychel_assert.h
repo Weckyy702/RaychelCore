@@ -47,9 +47,9 @@
         std::terminate();
 #endif
 
-#define RAYCHEL_ASSERT(exp)                                                                                                  \
-    if (!(exp)) {                                                                                                            \
-        RAYCHEL_TERMINATE("Assertion '", RAYCHEL_STRINGIFY(exp), "' failed!");                                               \
+#define RAYCHEL_ASSERT(exp)                                                                                                      \
+    if (!(exp)) {                                                                                                                \
+        RAYCHEL_TERMINATE("Assertion '" RAYCHEL_STRINGIFY(exp) "' failed!");                                                   \
     }
 
 #define RAYCHEL_ASSERT_NOT_REACHED RAYCHEL_TERMINATE("Assertion failed! Expected to not execute ", __FILE__, ":", __LINE__)
