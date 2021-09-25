@@ -87,7 +87,7 @@ namespace Raychel {
 
         [[nodiscard]] int& as_int_ref() const noexcept
         {
-            RAYCHEL_ASSERT(type() == ValueType::float_);
+            RAYCHEL_ASSERT(type() == ValueType::int_);
             return as_int_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
 
@@ -99,7 +99,7 @@ namespace Raychel {
 
         [[nodiscard]] std::string& as_string_ref() const noexcept
         {
-            RAYCHEL_ASSERT(type() == ValueType::float_);
+            RAYCHEL_ASSERT(type() == ValueType::string_);
             return as_string_; //NOLINT(cppcoreguidelines-pro-type-union-access)
         }
 
