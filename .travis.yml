@@ -6,13 +6,12 @@ compiler:
   - gcc
 
 addons:
+  apt:
+    packages:
+      - clang-12
   snap:
     packages:
       - cmake
-
-install:
-  - git clone https://github.com/catchorg/Catch2 --branch v2.x
-  - cd Catch2; cmake . -B build; sudo cmake --build build --target install -- -j 2
 
 script:
   - cmake .
