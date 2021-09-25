@@ -12,7 +12,7 @@ addons:
 
 install:
   - git clone https://github.com/catchorg/Catch2 --branch v2.x
-  - cd Catch2; cmake .; cmake --build . --target install -- -j 2
+  - cd Catch2; cmake . -B build; sudo cmake --build build --target install -- -j 2
 
 script:
   - cmake .
