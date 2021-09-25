@@ -9,8 +9,6 @@ addons:
   apt:
     packages:
       - clang-12
-  snap:
-    packages:
       - cmake
 
 script:
