@@ -14,9 +14,7 @@ set(RAYCHELCORE_INSTALLED_HEADER_DIR ${CMAKE_INSTALL_FULL_INCLUDEDIR}/RaychelCor
 set(RAYCHELCORE_INSTALLED_LIB_DIR ${CMAKE_INSTALL_FULL_LIBDIR}/RaychelCore)
 
 #LIBRARY
-add_library(RaychelCore INTERFACE
-    ${RAYCHELCORE_HEADERS}
-)
+add_library(RaychelCore INTERFACE)
 target_include_directories(RaychelCore INTERFACE
     $<BUILD_INTERFACE:${RAYCHELCORE_HEADER_PATH}> # for headers when building
     $<INSTALL_INTERFACE:${RAYCHELCORE_INSTALLED_HEADER_DIR}> # for client in install mode
