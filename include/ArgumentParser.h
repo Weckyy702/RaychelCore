@@ -102,38 +102,17 @@ namespace Raychel {
         */
         [[nodiscard]] bool parse(int argc, char const* const* argv) noexcept
         {
-            //-h or --help should not mutate any state and exit immediately
+            // -h or --help should not mutate any state and exit immediately
             if (handle_help_arg(argc, argv)) {
                 return false;
             }
 
-            for (int i = 1; i < argc - 1; i += 2) {      //the first and last command line argument cannot be keys
-                std::string_view current_arg = argv[i];  //NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                std::string_view next_arg = argv[i + 1]; //NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (!_parse(argc, argv)) {
+                _show_usage();
+                return false;
+                }
 
-                if (!current_arg.starts_with('-')) {
-                    Logger::error("Argument '", current_arg, "' is incorrectly formatted!\n");
-                    goto parse_failed; //NOLINT(hicpp-avoid-goto, cppcoreguidelines-avoid-goto): Code duplication is worse than goto
-                }
-                if (current_arg.starts_with("--")) {
-                    //parse argument in the form --key value
-                    current_arg.remove_prefix(2U);
-                    if (!_parse_long_arg(current_arg, next_arg)) {
-                        goto parse_failed; //NOLINT(hicpp-avoid-goto, cppcoreguidelines-avoid-goto): Code duplication is worse than goto
-                    }
-                } else {
-                    //parse argument in the form -key value
-                    current_arg.remove_prefix(1U);
-                    if (!_parse_short_arg(current_arg, next_arg)) {
-                        goto parse_failed; //NOLINT(hicpp-avoid-goto, cppcoreguidelines-avoid-goto): Code duplication is worse than goto
-                    }
-                }
-            }
             return true;
-
-        parse_failed:
-            _show_usage();
-            return false;
         }
 
     private:
@@ -147,6 +126,62 @@ namespace Raychel {
             }
 
             return arguments_.insert({key, CommandLineValueReference{value_ref}}).second;
+        }
+
+        [[nodiscard]] bool _parse(int argc, char const* const* argv) noexcept
+        {
+            //parsing state
+            bool got_key = false;
+            std::string_view current_key;
+
+            for (int i = 1; i < argc; i++) {   //the first argument cannot be a key
+                std::string_view arg{argv[i]}; //NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+                if (got_key) {
+
+                    if (!_parse_argument(current_key, arg)) {
+                        return false;
+                    }
+
+                    got_key = false;
+                } else {
+                    if (!arg.starts_with('-')) {
+                        Logger::error("Expected key starting with '-' or '--', got '", arg, "'\n");
+                        return false;
+                    }
+
+                    //TODO: move this up into the parsing part of the loop to make the distinction better
+                    if (const auto position = arg.find('='); position != std::string_view::npos) {
+                        if (!_parse_assignment_option(arg, position)) {
+                            return false;
+                        }
+                        got_key = false;
+                        continue;
+                    }
+
+                    current_key = arg;
+                    got_key = true;
+                }
+            }
+            return true;
+        }
+
+        [[nodiscard]] bool _parse_argument(std::string_view key, std::string_view value_str) noexcept
+        {
+            if (key.starts_with("--")) {
+                key.remove_prefix(2U);
+                return _parse_long_arg(key, value_str);
+            }
+            key.remove_prefix(1U);
+            return _parse_short_arg(key, value_str);
+        }
+
+        [[nodiscard]] bool _parse_assignment_option(std::string_view current_arg, std::size_t assignment_index) noexcept
+        {
+            const auto key = current_arg.substr(0, assignment_index);
+            const auto value_str = current_arg.substr(assignment_index + 1);
+
+            return _parse_argument(key, value_str);
         }
 
         [[nodiscard]] bool _parse_long_arg(std::string_view current_arg, std::string_view value_str) noexcept
@@ -204,11 +239,11 @@ namespace Raychel {
             RAYCHEL_ASSERT_NOT_REACHED;
         }
 
-        template<typename T = int>
+        template <typename T = int>
         [[nodiscard]] static bool _parse_int(std::string_view value_string, const CommandLineValueReference& value_ref) noexcept
         {
             static_assert(std::is_same_v<T, int>, "Implementation bug!");
-            if constexpr(details::_std_has_from_chars<T>::value) {
+            if constexpr (details::_std_has_from_chars<T>::value) {
                 const auto [_, ec] = std::from_chars<T>(std::begin(value_string), std::end(value_string), value_ref.as_int_ref());
 
                 if (ec != std::errc{}) {
@@ -234,7 +269,8 @@ namespace Raychel {
         {
             static_assert(std::is_same_v<T, float>, "Implementation bug!");
             if constexpr (details::_std_has_from_chars<T>::value) {
-                const auto [_, ec] = std::from_chars(std::begin(value_string), std::end(value_string), static_cast<T&>(value_ref.as_float_ref()));
+                const auto [_, ec] =
+                    std::from_chars(std::begin(value_string), std::end(value_string), static_cast<T&>(value_ref.as_float_ref()));
 
                 if (ec != std::errc{}) {
                     Logger::error("Could not parse value '", value_string, "' as a float!\n");
