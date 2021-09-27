@@ -110,7 +110,7 @@ namespace Raychel {
             if (!_parse(argc, argv)) {
                 _show_usage();
                 return false;
-                }
+            }
 
             return true;
         }
@@ -250,7 +250,7 @@ namespace Raychel {
                     Logger::error("Could not parse value '", value_string, "' as an int!\n");
                     return false;
                 }
-            return true;
+                return true;
             } else {
                 std::stringstream interpreter;
                 interpreter << value_string;

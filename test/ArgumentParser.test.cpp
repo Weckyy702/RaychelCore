@@ -29,12 +29,12 @@
 #include "catch2/catch.hpp"
 
 //NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
+TEST_CASE("ArgumentParser: 1", "[RaychelCore][ArgumentParser]")
 {
     //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style strings are pain
     const char* _argv[] = {
-        "/path/to/binary", "--iterations", "5", "-n", "10", "-f", "-123.45", "one_more_option_just_for_the_fun_of_it"};
-    const int _argc = sizeof(_argv) / sizeof(_argv[0]);
+        "/path/to/binary", "--iterations", "5", "-n", "10", "-f=-123.45", "-n=15"};
+    constexpr int _argc = sizeof(_argv) / sizeof(_argv[0]);
 
     struct
     {
@@ -52,7 +52,36 @@ TEST_CASE("ArgumentParser", "[RaychelCore][ArgumentParser]")
     //NOLINTNEXTLINE(hicpp-no-array-decay, cppcoreguidelines-pro-bounds-array-to-pointer-decay): C-Style strings are pain
     REQUIRE(ap.parse(_argc, _argv));
 
-    REQUIRE(state.i == 10);
+    REQUIRE(state.i == 15);
     REQUIRE(state.f == -123.45F);
+    REQUIRE(state.str.empty());
+}
+
+//NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("ArgumentParser: 2", "[RaychelCore][ArgumentParser]")
+{
+    //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style strings are pain
+    const char* _argv[] = {
+        "/path/to/binary", "--iterations=5", "-n=10", "10", "-f=-123.45", "-n=15"};
+    constexpr int _argc = sizeof(_argv) / sizeof(_argv[0]);
+
+    struct
+    {
+        int i{0};
+        float f{0};
+        std::string str;
+    } state;
+
+    Raychel::ArgumentParser ap;
+
+    REQUIRE(ap.add_float_arg("arg", "f", "float arg", state.f));
+    REQUIRE(ap.add_int_arg("iterations", "n", "number of iterations", state.i));
+    REQUIRE(!ap.add_string_arg("iterations", "n", "number of iterations, again", state.str));
+
+    //NOLINTNEXTLINE(hicpp-no-array-decay, cppcoreguidelines-pro-bounds-array-to-pointer-decay): C-Style strings are pain
+    REQUIRE(!ap.parse(_argc, _argv));
+
+    REQUIRE(state.i == 10); //TODO: with state recovery, this should be 0
+    REQUIRE(state.f == 0);
     REQUIRE(state.str.empty());
 }
