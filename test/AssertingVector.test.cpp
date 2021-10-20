@@ -18,7 +18,7 @@ TEST_CASE("Asserting Vector", "[RaychelCore][Utilities]")
 
 TEST_CASE("const Asserting Vector", "[RaychelCore][Utilities]")
 {
-    const Raychel::AssertingVector<int> v{5};
+    const Raychel::AssertingVector<int> v{1, 2, 3, 4, 5};
 
     REQUIRE(v.size() == 5);
 
