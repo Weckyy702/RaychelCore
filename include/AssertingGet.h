@@ -18,7 +18,7 @@ namespace Raychel {
     }
 
     template <typename T, typename... Ts>
-    constexpr T&& get( std::variant<Ts...>&& v ) noexcept
+    constexpr T&& get(std::variant<Ts...>&& v) noexcept
     {
         try {
             return std::get<T>(std::forward<std::variant<Ts...>&&>(v));

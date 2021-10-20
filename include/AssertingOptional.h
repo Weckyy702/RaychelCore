@@ -3,6 +3,8 @@
 * \author Weckyy702 (weckyy702@gmail.com)
 * \brief Header file for AssertingOptional class
 * \date 2021-09-29
+* \note The methods in this file use reinterpret_cast to convert from Raychel::AssertingOptional to its base class std::optional.
+*       This is explicitly not UB as stated in the "Notes" section on https://en.cppreference.com/w/cpp/language/reinterpret_cast
 * 
 * MIT License
 * Copyright (c) [2021] [Weckyy702 (weckyy702@gmail.com | https://github.com/Weckyy702)]
@@ -53,7 +55,8 @@ namespace Raychel {
         constexpr const T& operator*() const& noexcept
         {
             RAYCHEL_ASSERT(this->has_value());
-            return reinterpret_cast<const std::optional<T>*>(this)->operator*(); //NOLINT: this is a very ugly way to forward the call
+            //NOLINTNEXTLINE: this is a very ugly way to forward the call
+            return reinterpret_cast<const std::optional<T>*>(this)->operator*();
         }
 
         constexpr T& operator*() & noexcept
@@ -65,13 +68,15 @@ namespace Raychel {
         constexpr const T&& operator*() const&& noexcept //is a const T&& even a thing?
         {
             RAYCHEL_ASSERT(this->has_value());
-            return reinterpret_cast<const std::optional<T>*>(this)->operator*(); //NOLINT: this is a very ugly way to forward the call
+            //NOLINTNEXTLINE: this is a very ugly way to forward the call
+            return reinterpret_cast<const std::optional<T>*>(this)->operator*();
         }
 
         constexpr T&& operator*() && noexcept
         {
             RAYCHEL_ASSERT(this->has_value());
-            return std::move(*reinterpret_cast<std::optional<T>*>(this)).operator*(); //NOLINT: this is a *very* ugly way to forward the call
+            //NOLINTNEXTLINE: this is a *very* ugly way to forward the call
+            return std::move(*reinterpret_cast<std::optional<T>*>(this)).operator*();
         }
 
         constexpr const T& value() const& noexcept

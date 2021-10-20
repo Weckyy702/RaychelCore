@@ -72,8 +72,10 @@ namespace Raychel {
 
 #if RAYCHEL_HAS_TO_CHARS
         template <typename T>
-        struct _std_has_from_chars<T, std::void_t<decltype(std::from_chars(
-            std::declval<const char*>(), std::declval<const char*>(), std::declval<T&>()))>> : std::true_type
+        struct _std_has_from_chars<
+            T,
+            std::void_t<decltype(std::from_chars(std::declval<const char*>(), std::declval<const char*>(), std::declval<T&>()))>>
+            : std::true_type
         {};
 #endif
     } // namespace details

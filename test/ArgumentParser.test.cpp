@@ -32,8 +32,7 @@
 TEST_CASE("ArgumentParser: 1", "[RaychelCore][ArgumentParser]")
 {
     //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style strings are pain
-    const char* _argv[] = {
-        "/path/to/binary", "--iterations", "5", "-n", "10", "-f=-123.45", "-n=15"};
+    const char* _argv[] = {"/path/to/binary", "--iterations", "5", "-n", "10", "-f=-123.45", "-n=15"};
     constexpr int _argc = sizeof(_argv) / sizeof(_argv[0]);
 
     struct
@@ -61,8 +60,7 @@ TEST_CASE("ArgumentParser: 1", "[RaychelCore][ArgumentParser]")
 TEST_CASE("ArgumentParser: 2", "[RaychelCore][ArgumentParser]")
 {
     //NOLINTNEXTLINE(hicpp-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays): C-Style strings are pain
-    const char* _argv[] = {
-        "/path/to/binary", "--iterations=5", "-n=10", "10", "-f=-123.45", "-n=15"};
+    const char* _argv[] = {"/path/to/binary", "--iterations=5", "-n=10", "10", "-f=-123.45", "-n=15"};
     constexpr int _argc = sizeof(_argv) / sizeof(_argv[0]);
 
     struct
