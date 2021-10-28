@@ -3,6 +3,7 @@
 * \author Weckyy702 (weckyy702@gmail.com)
 * \brief Header file for AssertingOptional class
 * \date 2021-09-29
+*
 * \note The methods in this file use reinterpret_cast to convert from Raychel::AssertingOptional to its base class std::optional.
 *       This is explicitly not UB as stated in the "Notes" section on https://en.cppreference.com/w/cpp/language/reinterpret_cast
 * 

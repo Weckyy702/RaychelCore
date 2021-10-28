@@ -7,6 +7,8 @@
 
 namespace Raychel {
 
+    //TODO: clang errors on try-catch in constexpr get
+
     template <typename T, typename... Ts>
     constexpr T& get(std::variant<Ts...>& v) noexcept
     {

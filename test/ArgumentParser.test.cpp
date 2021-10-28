@@ -75,6 +75,7 @@ TEST_CASE("ArgumentParser: 2", "[RaychelCore][ArgumentParser]")
     REQUIRE(ap.add_float_arg("arg", "f", "float arg", state.f));
     REQUIRE(ap.add_int_arg("iterations", "n", "number of iterations", state.i));
     REQUIRE(!ap.add_string_arg("iterations", "n", "number of iterations, again", state.str));
+    REQUIRE(!ap.add_int_arg("iterations", "n", "number of iterations, one last time", state.i));
 
     //NOLINTNEXTLINE(hicpp-no-array-decay, cppcoreguidelines-pro-bounds-array-to-pointer-decay): C-Style strings are pain
     REQUIRE(!ap.parse(_argc, _argv));

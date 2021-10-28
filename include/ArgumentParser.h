@@ -103,7 +103,7 @@ namespace Raychel {
         [[nodiscard]] bool parse(int argc, char const* const* argv) noexcept
         {
             // -h or --help should not mutate any state and exit immediately
-            if (handle_help_arg(argc, argv)) {
+            if (_handle_help_arg(argc, argv)) {
                 return false;
             }
 
@@ -244,7 +244,7 @@ namespace Raychel {
         {
             static_assert(std::is_same_v<T, int>, "Implementation bug!");
             if constexpr (details::_std_has_from_chars<T>::value) {
-                const auto [_, ec] = std::from_chars<T>(std::begin(value_string), std::end(value_string), value_ref.as_int_ref());
+                const auto [_, ec] = std::from_chars(value_string.data(), value_string.data()+value_string.size(), static_cast<T&>(value_ref.as_int_ref()));
 
                 if (ec != std::errc{}) {
                     Logger::error("Could not parse value '", value_string, "' as an int!\n");
@@ -254,7 +254,7 @@ namespace Raychel {
             } else {
                 std::stringstream interpreter;
                 interpreter << value_string;
-                int f = 0.0F;
+                int f = 0;
                 if (interpreter >> f) {
                     value_ref.as_int_ref() = f;
                     return true;
@@ -270,7 +270,7 @@ namespace Raychel {
             static_assert(std::is_same_v<T, float>, "Implementation bug!");
             if constexpr (details::_std_has_from_chars<T>::value) {
                 const auto [_, ec] =
-                    std::from_chars(std::begin(value_string), std::end(value_string), static_cast<T&>(value_ref.as_float_ref()));
+                    std::from_chars(value_string.data(), value_string.data()+value_string.size(), static_cast<T&>(value_ref.as_float_ref()));
 
                 if (ec != std::errc{}) {
                     Logger::error("Could not parse value '", value_string, "' as a float!\n");
@@ -290,7 +290,7 @@ namespace Raychel {
             }
         }
 
-        [[nodiscard]] bool handle_help_arg(int argc, char const* const* argv) noexcept
+        [[nodiscard]] bool _handle_help_arg(int argc, char const* const* argv) noexcept
         {
             for (int i = 0; i < argc; i++) {
                 std::string_view arg = argv[i]; //NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
