@@ -13,13 +13,20 @@ add_executable(Unit_test
 )
 
 target_compile_features(Unit_test PUBLIC cxx_std_20)
-target_compile_options(Unit_test PUBLIC
-    -Wall
-    -Wextra
-    -Wconversion
-    -Werror
-    -Wpedantic
-)
+if(${MSVC})
+    target_compile_definitions(Unit_test PUBLIC
+        /W4
+        /wd4068 #unknown pragma
+    )
+else()
+    target_compile_options(Unit_test PUBLIC
+        -Wall
+        -Wextra
+        -Wconversion
+        -Werror
+        -Wpedantic
+    )
+endif()
 
 target_link_libraries(Unit_test PUBLIC
     RaychelCore
