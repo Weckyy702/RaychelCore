@@ -30,10 +30,6 @@
 
 #include <version>
 
-#define RAYCHEL_OS_LINUX 0
-#define RAYCHEL_OS_WIN32 1
-#define RAYCHEL_OS_DARWIN 2 //Raychel isn't tested on MacOS!
-
 #if defined(__clang__) || defined(__GNUC__)
     #define RAYCHEL_FUNC_NAME __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
@@ -42,15 +38,27 @@
     #define RAYCHEL_FUNC_NAME __func__
 #endif
 
+#ifdef __GNUC__
+    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::gcc
+#elif defined(__clang__)
+    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::clang
+#elif defined(_MSVC_VER)
+    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::msvc
+#else
+    #pragma message("Unable to detect compiler id!")
+    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::unknown
+#endif
+
 #ifdef __linux
-    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_LINUX
+    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Linux
 #elif defined(_WIN32)
-    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_WIN32
+    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Win32
 #elif defined(__APPLE__)
-    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_DARWIN
+    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Darwin
     #pragma message("Please keep in mind that this version of RaychelCore is not tested on MacOS")
 #else
-    #error "Unknown OS!"
+    #pragma message("Unable to detect host OS!")
+    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::unknown
 #endif
 
 #if __cpp_lib_three_way_comparison >= 201907L
@@ -64,5 +72,22 @@
 #else
     #define RAYCHEL_HAS_TO_CHARS 0
 #endif
+
+
+namespace Raychel {
+    enum class OS {
+        unknown,
+        Win32,
+        Linux,
+        Darwin,
+    };
+
+    enum class compiler {
+        unknown,
+        gcc,
+        clang,
+        msvc,
+    };
+} //namespace Raychel
 
 #endif //!RAYCHEL_COMPAT_H
