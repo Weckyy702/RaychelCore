@@ -68,9 +68,9 @@
 #endif
 
 #if __cpp_lib_to_chars >= 201611L
-    #define RAYCHEL_HAS_TO_CHARS 1
+    #define RAYCHEL_HAS_CHARCONV 1
 #else
-    #define RAYCHEL_HAS_TO_CHARS 0
+    #define RAYCHEL_HAS_CHARCONV 0
 #endif
 
 
