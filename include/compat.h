@@ -67,7 +67,7 @@
     #define RAYCHEL_HAS_SPACESHIP_OP 0
 #endif
 
-#if __cpp_lib_to_chars >= 201611L
+#if __cpp_lib_to_chars >= 201611L && !defined(RAYCHELCORE_USE_CHARCONV_REPLACEMENT)
     #define RAYCHEL_HAS_CHARCONV 1
 #else
     #define RAYCHEL_HAS_CHARCONV 0
