@@ -8,7 +8,7 @@
 #if RAYCHEL_HAS_CHARCONV
     #include <charconv>
 #else
-    #pragma message "IMPORTANT: You are using RaychelCore's replacement for std::from_chars. The integer version only supports the base 2, 8, 10 and 16!"
+    #pragma message("IMPORTANT: You are using RaychelCore's replacement for std::from_chars. The integer version only supports the bases 2, 8, 10 and 16!")
     #include <sstream>
     #include <string>
 #endif
@@ -32,6 +32,10 @@ namespace Raychel {
     {
         const char* ptr;
         std::errc ec;
+
+        #if RAYCHEL_VERSION_CHECK(202002L)
+        bool operator==(const from_chars_result& b) const noexcept = default;
+        #endif
     };
 
     struct to_chars_result
@@ -69,7 +73,7 @@ namespace Raychel {
         return details::from_chars_impl(begin, end, value, std::ios::dec);
     }
 
-    template <typename T, typename std::enable_if_t<std::is_floating_point_v<T>>>
+    template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
     from_chars_result from_chars(char const* const begin, char const* const end, T& value, chars_format fmt) noexcept
     {
         switch(fmt) {
