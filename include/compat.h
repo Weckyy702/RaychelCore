@@ -61,6 +61,23 @@
     #define RAYCHEL_ACTIVE_OS ::Raychel::OS::unknown
 #endif
 
+#define RAYCHEL_VERSION_CHECK(version_id) _MSVC_LANG == version_id || (!defined(_MSVC_LANG) && __cplusplus ==version_id)
+
+#if RAYCHEL_VERSION_CHECK(199711L)
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp98_or_03
+#elif RAYCHEL_VERSION_CHECK(201103L)
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp11
+#elif RAYCHEL_VERSION_CHECK(201402L)
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp14
+#elif RAYCHEL_VERSION_CHECK(201703L)
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp17
+#elif RAYCHEL_VERSION_CHECK(202002L)
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp20
+#else
+    #pragma message("Unable to detect C++ version!")
+    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::unknown
+#endif
+
 #if __cpp_lib_three_way_comparison >= 201907L
     #define RAYCHEL_HAS_SPACESHIP_OP 1
 #else
@@ -88,6 +105,19 @@ namespace Raychel {
         clang,
         msvc,
     };
+
+    enum class cpp_version {
+        unknown,
+        cpp98_or_03,
+        cpp11,
+        cpp14,
+        cpp17,
+        cpp20,
+    };
+
+    constexpr auto active_os = RAYCHEL_ACTIVE_OS;
+    constexpr auto active_compiler = RAYCHEL_ACTIVE_COMPILER;
+    constexpr auto active_cpp_version = RAYCHEL_CPP_VERSION;
 } //namespace Raychel
 
 #endif //!RAYCHEL_COMPAT_H
