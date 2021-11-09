@@ -10,6 +10,7 @@
 #else
     #pragma message("IMPORTANT: You are using RaychelCore's replacement for std::from_chars. The integer version only supports the bases 2, 8, 10 and 16!")
     #include <sstream>
+    #include <iomanip>
     #include <string>
 #endif
 
@@ -52,11 +53,32 @@ namespace Raychel {
 #else
 
     namespace details {
-        template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
-        from_chars_result from_chars_impl(char const* const begin, char const* const end, T& value, std::ios::fmtflags format) noexcept
+        template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+        from_chars_result fp_from_chars_impl(char const* const begin, char const* const end, T& value, std::ios::fmtflags format) noexcept
         {
             std::istringstream stream{std::string{begin, end}};
+            stream.imbue(std::locale::classic());
             stream.setf(format);
+
+            if (T val; (stream >> val)) {
+                value = val;
+                return {end, {}};
+            }
+
+            return {begin, std::errc::invalid_argument};
+        }
+
+        template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+        from_chars_result int_from_chars_impl(char const* const begin, char const* const end, T& value, int base) noexcept
+        {
+            if (base != 2 && base != 8 && base != 10 && base != 16) {
+                return {begin, std::errc::invalid_argument};
+            }
+
+
+            std::stringstream stream{std::string{begin, end}};
+            stream.imbue(std::locale::classic());
+            stream << std::setbase(base);
 
             if (T val; (stream >> val)) {
                 value = val;
@@ -67,24 +89,24 @@ namespace Raychel {
         }
     } // namespace details
 
-    template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
-    from_chars_result from_chars(char const* const begin, char const* const end, T& value) noexcept
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+    from_chars_result from_chars(char const* const begin, char const* const end, T& value, int base = 10) noexcept
     {
-        return details::from_chars_impl(begin, end, value, std::ios::dec);
+        return details::int_from_chars_impl(begin, end, value, base);
     }
 
     template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
-    from_chars_result from_chars(char const* const begin, char const* const end, T& value, chars_format fmt) noexcept
+    from_chars_result from_chars(char const* const begin, char const* const end, T& value, chars_format fmt = chars_format::general) noexcept
     {
         switch(fmt) {
             case chars_format::fixed:
-                return details::from_chars_impl(begin, end, value, std::ios::fixed);
+                return details::fp_from_chars_impl(begin, end, value, std::ios::fixed);
             case chars_format::scientific:
-                return details::from_chars_impl(begin, end, value, std::ios::scientific);
+                return details::fp_from_chars_impl(begin, end, value, std::ios::scientific);
             case chars_format::hex:
-                return details::from_chars_impl(begin, end, value, std::ios::hex);
+                return details::fp_from_chars_impl(begin, end, value, std::ios::hex);
             case chars_format::general:
-                return details::from_chars_impl(begin, end, value, std::ios::dec);
+                return details::fp_from_chars_impl(begin, end, value, std::ios::dec);
         }
         return {begin, std::errc::invalid_argument};
     }
