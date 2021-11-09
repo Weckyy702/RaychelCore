@@ -42,7 +42,7 @@
     #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::gcc
 #elif defined(__clang__)
     #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::clang
-#elif defined(_MSVC_VER)
+#elif defined(_MSVC_LANG)
     #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::msvc
 #else
     #pragma message("Unable to detect compiler id!")
@@ -61,7 +61,11 @@
     #define RAYCHEL_ACTIVE_OS ::Raychel::OS::unknown
 #endif
 
-#define RAYCHEL_VERSION_CHECK(version_id) _MSVC_LANG == version_id || (!defined(_MSVC_LANG) && __cplusplus ==version_id)
+#ifdef _MSVC_LANG
+#define RAYCHEL_VERSION_CHECK(version_id) _MSVC_LANG == version_id
+#else
+#define RAYCHEL_VERSION_CHECK(version_id) __cplusplus ==version_id
+#endif
 
 #if RAYCHEL_VERSION_CHECK(199711L)
     #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp98_or_03
