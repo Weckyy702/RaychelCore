@@ -54,5 +54,69 @@ TEST_CASE("Raychel decimal charconv", "[RaychelCore][Compatibility]")
         REQUIRE(ec == std::errc{});
         REQUIRE(i == 12345L);
     }
+
+    //TODO: add tests for to_chars
+}
+
+TEST_CASE("Raychel octal integer charconv", "[RaychelCore][Compatibility]")
+{
+    constexpr std::string_view octal_int = "176304120";
+    SECTION("Integer octal from_chars")
+    {
+        int i{0};
+        const auto [_, ec] = Raychel::from_chars(octal_int.data(), octal_int.data() + octal_int.size(), i, 8);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0176304120);
+    }
+
+    SECTION("Unsigned octal from_chars")
+    {
+        unsigned i{0};
+        const auto [_, ec] = Raychel::from_chars(octal_int.data(), octal_int.data() + octal_int.size(), i, 8);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0176304120);
+    }
+
+    SECTION("Long octal from_chars")
+    {
+        std::uint64_t i{0};
+        const auto [_, ec] = Raychel::from_chars(octal_int.data(), octal_int.data() + octal_int.size(), i, 8);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0176304120);
+    }
+}
+
+TEST_CASE("Raychel hex integer charconv", "[RaychelCore][Compatibility]")
+{
+    constexpr std::string_view hexadecimal_int = "BADB002";
+    SECTION("Integer hex from_chars")
+    {
+        int i{0};
+        const auto [_, ec] = Raychel::from_chars(hexadecimal_int.data(), hexadecimal_int.data() + hexadecimal_int.size(), i, 16);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0xBADB002);
+    }
+
+    SECTION("Unsigned hex from_chars")
+    {
+        unsigned i{0};
+        const auto [_, ec] = Raychel::from_chars(hexadecimal_int.data(), hexadecimal_int.data() + hexadecimal_int.size(), i, 16);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0xBADB002);
+    }
+
+    SECTION("Long hex from_chars")
+    {
+        std::uint64_t i{0};
+        const auto [_, ec] = Raychel::from_chars(hexadecimal_int.data(), hexadecimal_int.data() + hexadecimal_int.size(), i, 16);
+
+        REQUIRE(ec == std::errc{});
+        REQUIRE(i == 0xBADB002);
+    }
 }
 //NOLINTEND
