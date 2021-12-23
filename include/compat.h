@@ -38,16 +38,26 @@
     #define RAYCHEL_FUNC_NAME __func__
 #endif
 
+#define RAYCHEL_COMPILER_UNKNOWN 0
+#define RAYCHEL_COMPILER_GCC 1
+#define RAYCHEL_COMPILER_CLANG 2
+#define RAYCHEL_COMPILER_MSVC 3
+
 #ifdef __GNUC__
-    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::gcc
+    #define RAYCHEL_ACTIVE_COMPILER RAYCHEL_COMPILER_GCC
 #elif defined(__clang__)
-    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::clang
+    #define RAYCHEL_ACTIVE_COMPILER RAYCHEL_COMPILER_CLANG
 #elif defined(_MSVC_LANG)
-    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::msvc
+    #define RAYCHEL_ACTIVE_COMPILER RAYCHEL_COMPILER_MSVC
 #else
     #pragma message("Unable to detect compiler id!")
-    #define RAYCHEL_ACTIVE_COMPILER ::Raychel::compiler::unknown
+    #define RAYCHEL_ACTIVE_COMPILER RAYCHEL_COMPILER_UNKNOWN
 #endif
+
+#define RAYCHEL_OS_UNKNOWN 0
+#define RAYCHEL_OS_LINUX 1
+#define RAYCHEL_OS_WINDOWS 2
+#define RAYCHEL_OS_DARWIN 3
 
 #ifdef __linux
     #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Linux
@@ -97,17 +107,17 @@
 
 namespace Raychel {
     enum class OS {
-        unknown,
-        Win32,
-        Linux,
-        Darwin,
+        unknown = RAYCHEL_OS_UNKNOWN,
+        Win32 = RAYCHEL_OS_WINDOWS,
+        Linux = RAYCHEL_OS_LINUX,
+        Darwin = RAYCHEL_OS_DARWIN,
     };
 
     enum class compiler {
-        unknown,
-        gcc,
-        clang,
-        msvc,
+        unknown = RAYCHEL_COMPILER_UNKNOWN,
+        gcc = RAYCHEL_COMPILER_GCC,
+        clang = RAYCHEL_COMPILER_CLANG,
+        msvc = RAYCHEL_COMPILER_MSVC,
     };
 
     enum class cpp_version {
