@@ -10,43 +10,31 @@ namespace Raychel {
     //TODO: clang errors on try-catch in constexpr get
 
     template <typename T, typename... Ts>
-    constexpr T& get(std::variant<Ts...>& v) noexcept
+    constexpr T& get(std::variant<Ts...>& variant) noexcept
     {
-        try {
-            return std::get<T>(v);
-        } catch (std::bad_variant_access&) {
-            RAYCHEL_ASSERT_NOT_REACHED;
-        }
+        RAYCHEL_ASSERT(std::holds_alternative<T>(variant))
+        return std::get<T>(variant);
     }
 
     template <typename T, typename... Ts>
-    constexpr T&& get(std::variant<Ts...>&& v) noexcept
+    constexpr T&& get(std::variant<Ts...>&& variant) noexcept
     {
-        try {
-            return std::get<T>(std::forward<std::variant<Ts...>&&>(v));
-        } catch (std::bad_variant_access&) {
-            RAYCHEL_ASSERT_NOT_REACHED;
-        }
+        RAYCHEL_ASSERT(std::holds_alternative<T>(variant))
+        return std::get<T>(std::move(variant));
     }
 
     template <typename T, typename... Ts>
-    constexpr const T& get(const std::variant<Ts...>& v) noexcept
+    constexpr const T& get(const std::variant<Ts...>& variant) noexcept
     {
-        try {
-            return std::get<T>(v);
-        } catch (std::bad_variant_access&) {
-            RAYCHEL_ASSERT_NOT_REACHED;
-        }
+        RAYCHEL_ASSERT(std::holds_alternative<T>(variant))
+        return std::get<T>(variant);
     }
 
     template <typename T, typename... Ts>
-    constexpr const T&& get(const std::variant<Ts...>&& v) noexcept
+    constexpr const T&& get(const std::variant<Ts...>&& variant) noexcept
     {
-        try {
-            return std::get<T>(std::forward<std::variant<Ts...>&&>(v));
-        } catch (std::bad_variant_access&) {
-            RAYCHEL_ASSERT_NOT_REACHED;
-        }
+        RAYCHEL_ASSERT(std::holds_alternative<T>(variant))
+        return std::get<T>(variant);
     }
 
 } // namespace Raychel
