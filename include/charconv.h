@@ -28,16 +28,17 @@
 #ifndef RAYCHELCORE_CHARCONV_H
 #define RAYCHELCORE_CHARCONV_H
 
-#include <system_error>
 #include "./compat.h"
 
 #if RAYCHEL_HAS_CHARCONV
     #include <charconv>
 #else
-    #pragma message("IMPORTANT: You are using RaychelCore's replacement for std::from_chars. The integer version only supports the bases 8, 10 and 16!")
-    #include <sstream>
+    #pragma message(                                                                                                             \
+        "IMPORTANT: You are using RaychelCore's replacement for std::from_chars. The integer version only supports the bases 8, 10 and 16!")
     #include <iomanip>
+    #include <sstream>
     #include <string>
+    #include <system_error>
 #endif
 
 namespace Raychel {
@@ -60,9 +61,9 @@ namespace Raychel {
         const char* ptr;
         std::errc ec;
 
-        #if RAYCHEL_VERSION_CHECK(202002L)
+    #if RAYCHEL_CPP_VERSION == RAYCHEL_CPP_VERSION_20
         bool operator==(const from_chars_result& other) const noexcept = default;
-        #endif
+    #endif
     };
 
     struct to_chars_result
@@ -80,7 +81,8 @@ namespace Raychel {
 
     namespace details {
         template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
-        from_chars_result fp_from_chars_impl(char const* const begin, char const* const end, T& value, std::ios::fmtflags format) noexcept
+        from_chars_result
+        fp_from_chars_impl(char const* const begin, char const* const end, T& value, std::ios::fmtflags format) noexcept
         {
             std::istringstream stream{std::string{begin, end}};
             stream.imbue(std::locale::classic());
@@ -100,7 +102,6 @@ namespace Raychel {
             if (base != 8 && base != 10 && base != 16) {
                 return {begin, std::errc::invalid_argument};
             }
-
 
             std::istringstream stream{std::string{begin, end}};
             stream.imbue(std::locale::classic());
@@ -122,9 +123,10 @@ namespace Raychel {
     }
 
     template <typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
-    from_chars_result from_chars(char const* const begin, char const* const end, T& value, chars_format fmt = chars_format::general) noexcept
+    from_chars_result
+    from_chars(char const* const begin, char const* const end, T& value, chars_format fmt = chars_format::general) noexcept
     {
-        switch(fmt) {
+        switch (fmt) {
             case chars_format::fixed:
                 return details::fp_from_chars_impl(begin, end, value, std::ios::fixed);
             case chars_format::scientific:
@@ -139,6 +141,6 @@ namespace Raychel {
 
 #endif
 
-} //namespace RaychelCore
+} // namespace Raychel
 
 #endif //!RAYCHELCORE_CHARCONV_H

@@ -244,7 +244,8 @@ namespace Raychel {
         {
             static_assert(std::is_same_v<T, int>, "Implementation bug!");
             if constexpr (details::_std_has_from_chars<T>::value) {
-                const auto [_, ec] = std::from_chars(value_string.data(), value_string.data()+value_string.size(), static_cast<T&>(value_ref.as_int_ref()));
+                const auto [_, ec] = std::from_chars(
+                    value_string.data(), value_string.data() + value_string.size(), static_cast<T&>(value_ref.as_int_ref()));
 
                 if (ec != std::errc{}) {
                     Logger::error("Could not parse value '", value_string, "' as an int!\n");
@@ -269,8 +270,8 @@ namespace Raychel {
         {
             static_assert(std::is_same_v<T, float>, "Implementation bug!");
             if constexpr (details::_std_has_from_chars<T>::value) {
-                const auto [_, ec] =
-                    std::from_chars(value_string.data(), value_string.data()+value_string.size(), static_cast<T&>(value_ref.as_float_ref()));
+                const auto [_, ec] = std::from_chars(
+                    value_string.data(), value_string.data() + value_string.size(), static_cast<T&>(value_ref.as_float_ref()));
 
                 if (ec != std::errc{}) {
                     Logger::error("Could not parse value '", value_string, "' as a float!\n");
