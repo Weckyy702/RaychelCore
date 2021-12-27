@@ -33,6 +33,7 @@
 
 namespace Raychel {
 
+    template <typename T>
     class ScopedTimer
     {
     public:
@@ -48,7 +49,7 @@ namespace Raychel {
 
         ~ScopedTimer() noexcept
         {
-            Logger::logDuration(label_);
+            Logger::logDuration<T>(label_);
         }
 
     private:
