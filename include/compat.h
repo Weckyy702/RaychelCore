@@ -60,36 +60,43 @@
 #define RAYCHEL_OS_DARWIN 3
 
 #ifdef __linux
-    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Linux
+    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_LINUX
 #elif defined(_WIN32)
-    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Win32
+    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_WINDOWS
 #elif defined(__APPLE__)
-    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::Darwin
+    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_DARWIN
     #pragma message("Please keep in mind that this version of RaychelCore is not tested on MacOS")
 #else
     #pragma message("Unable to detect host OS!")
-    #define RAYCHEL_ACTIVE_OS ::Raychel::OS::unknown
+    #define RAYCHEL_ACTIVE_OS RAYCHEL_OS_UNKNOWN
 #endif
 
 #ifdef _MSVC_LANG
-#define RAYCHEL_VERSION_CHECK(version_id) _MSVC_LANG == version_id
+    #define RAYCHEL_VERSION_CHECK(version_id) _MSVC_LANG == version_id
 #else
-#define RAYCHEL_VERSION_CHECK(version_id) __cplusplus ==version_id
+    #define RAYCHEL_VERSION_CHECK(version_id) __cplusplus == version_id
 #endif
 
+#define RAYCHEL_CPP_VERSION_UNKNOWN 0
+#define RAYCHEL_CPP_VERSION_98_OR_03 1
+#define RAYCHEL_CPP_VERSION_11 2
+#define RAYCHEL_CPP_VERSION_14 3
+#define RAYCHEL_CPP_VERSION_17 4
+#define RAYCHEL_CPP_VERSION_20 5
+
 #if RAYCHEL_VERSION_CHECK(199711L)
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp98_or_03
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_98_OR_03
 #elif RAYCHEL_VERSION_CHECK(201103L)
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp11
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_11
 #elif RAYCHEL_VERSION_CHECK(201402L)
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp14
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_14
 #elif RAYCHEL_VERSION_CHECK(201703L)
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp17
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_17
 #elif RAYCHEL_VERSION_CHECK(202002L)
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::cpp20
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_20
 #else
     #pragma message("Unable to detect C++ version!")
-    #define RAYCHEL_CPP_VERSION ::Raychel::cpp_version::unknown
+    #define RAYCHEL_CPP_VERSION RAYCHEL_CPP_VERSION_UNKNOWN
 #endif
 
 #if __cpp_lib_three_way_comparison >= 201907L
@@ -103,7 +110,6 @@
 #else
     #define RAYCHEL_HAS_CHARCONV 0
 #endif
-
 
 namespace Raychel {
     enum class OS {
@@ -121,17 +127,17 @@ namespace Raychel {
     };
 
     enum class cpp_version {
-        unknown,
-        cpp98_or_03,
-        cpp11,
-        cpp14,
-        cpp17,
-        cpp20,
+        unknown = RAYCHEL_CPP_VERSION_UNKNOWN,
+        cpp98_or_03 = RAYCHEL_CPP_VERSION_98_OR_03,
+        cpp11 = RAYCHEL_CPP_VERSION_11,
+        cpp14 = RAYCHEL_CPP_VERSION_14,
+        cpp17 = RAYCHEL_CPP_VERSION_17,
+        cpp20 = RAYCHEL_CPP_VERSION_20,
     };
 
-    constexpr auto active_os = RAYCHEL_ACTIVE_OS;
-    constexpr auto active_compiler = RAYCHEL_ACTIVE_COMPILER;
-    constexpr auto active_cpp_version = RAYCHEL_CPP_VERSION;
+    constexpr auto active_os = static_cast<OS>(RAYCHEL_ACTIVE_OS);
+    constexpr auto active_compiler = static_cast<compiler>(RAYCHEL_ACTIVE_COMPILER);
+    constexpr auto active_cpp_version = static_cast<cpp_version>(RAYCHEL_CPP_VERSION);
 } //namespace Raychel
 
 #endif //!RAYCHEL_COMPAT_H
