@@ -1,4 +1,4 @@
-#include "AssertingOptional.h"
+#include "RaychelCore/AssertingOptional.h"
 #include <catch2/catch.hpp>
 
 //TODO: extend this test suite once Catch2 allows checking for std::terminate

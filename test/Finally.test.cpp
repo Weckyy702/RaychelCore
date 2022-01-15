@@ -1,4 +1,4 @@
-#include "Finally.h"
+#include "RaychelCore/Finally.h"
 #include <catch2/catch.hpp>
 
 TEST_CASE("Finally: Lambda")

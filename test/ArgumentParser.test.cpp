@@ -25,7 +25,7 @@
 * SOFTWARE.
 * 
 */
-#include "ArgumentParser.h"
+#include "RaychelCore/ArgumentParser.h"
 #include "catch2/catch.hpp"
 
 //NOLINTNEXTLINE(readability-function-cognitive-complexity)
