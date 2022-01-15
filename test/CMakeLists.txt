@@ -8,18 +8,18 @@ endif()
 
 file(GLOB_RECURSE RAYCHELCORE_TEST_SOURCES "*.test.cpp")
 
-add_executable(Unit_test
+add_executable(RaychelCore_test
     ${RAYCHELCORE_TEST_SOURCES}
 )
 
-target_compile_features(Unit_test PUBLIC cxx_std_20)
+target_compile_features(RaychelCore_test PUBLIC cxx_std_20)
 if(${MSVC})
-    target_compile_definitions(Unit_test PUBLIC
+    target_compile_definitions(RaychelCore_test PUBLIC
         /W4
         /wd4068 #unknown pragma
     )
 else()
-    target_compile_options(Unit_test PUBLIC
+    target_compile_options(RaychelCore_test PUBLIC
         -Wall
         -Wextra
         -Wconversion
@@ -28,11 +28,11 @@ else()
     )
 endif()
 
-target_link_libraries(Unit_test PUBLIC
+target_link_libraries(RaychelCore_test PUBLIC
     RaychelCore
     Catch2::Catch2
 )
 
 
 include(Catch)
-catch_discover_tests(Unit_test)
+catch_discover_tests(RaychelCore_test)
