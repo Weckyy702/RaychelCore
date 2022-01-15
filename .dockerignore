@@ -1,0 +1,10 @@
+**/.dockerignore
+**/.git
+**/.gitignore
+**/.vscode
+**/compile_commands.json
+**/build
+**/docker-compose*
+**/compose*
+**/Dockerfile*
+README.md
