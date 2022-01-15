@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 
+option(RAYCHELCORE_BUILD_TESTS "Build the unit test executable" OFF)
+
 project(RaychelCore VERSION 0.0.1 LANGUAGES CXX)
 #DEPENDENCIES
 include(cmake/find_dependencies.cmake)
@@ -48,5 +50,7 @@ install(EXPORT RaychelCore
 
 
 #TESTS
-include(CTest)
-add_subdirectory(test)
+if(RAYCHELCORE_BUILD_TESTS)
+    include(CTest)
+    add_subdirectory(test)
+endif()
