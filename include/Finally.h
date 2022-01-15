@@ -49,26 +49,25 @@ namespace Raychel {
     class Finally
     {
     public:
-
         using vaue_type = std::decay_t<F>;
 
-        explicit Finally(F f) : f_{f}
+        explicit Finally(F function) : function_{function}
         {}
 
         Finally(const Finally&) = default;
-        Finally(Finally&&) noexcept(std::is_nothrow_move_constructible_v<F>) = default;
+        Finally(Finally&&) = default; //NOLINT: the compiler will do the right thing
         Finally& operator=(const Finally&) = default;
-        Finally& operator=(Finally&&) noexcept(std::is_nothrow_move_assignable_v<F>) = default;
+        Finally& operator=(Finally&&) = default; //NOLINT: the compiler will do the right thing
 
         ~Finally() noexcept(std::is_nothrow_invocable_v<F>&& std::is_nothrow_destructible_v<F>)
         {
-            f_();
+            function_();
         }
 
     private:
-        vaue_type f_;
+        vaue_type function_;
     };
 
-} //namespace RaychelCore
+} // namespace Raychel
 
 #endif //!RAYCHELCORE_FINALLY_H
