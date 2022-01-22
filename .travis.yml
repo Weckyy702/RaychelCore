@@ -3,4 +3,5 @@ dist: focal
 language: cpp
 
 script:
-  - docker build --no-cache .
+  - docker build --no-cache --build-arg COMPILER=g++ .
+  - docker build --no-cache --build-arg COMPILER=clang++ .
