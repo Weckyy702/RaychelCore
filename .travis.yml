@@ -2,6 +2,9 @@ dist: focal
 
 language: cpp
 
+compiler:
+  - clang
+  - gcc
+
 script:
-  - docker build --no-cache --build-arg COMPILER=g++ .
-  - docker build --no-cache --build-arg COMPILER=clang++ .
+  - docker build --no-cache --build-arg COMPILER=${TRAVIS_COMPILER} .
