@@ -7,4 +7,4 @@ compiler:
   - gcc
 
 script:
-  - docker build --no-cache --build-arg COMPILER=${TRAVIS_COMPILER} .
+  - docker build --no-cache --build-arg COMPILER=${CXX_FOR_BUILD} .
