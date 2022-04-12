@@ -56,6 +56,4 @@
 
 #define RAYCHEL_TODO(feature) RAYCHEL_TERMINATE("Terminating on unimplemented feature ", feature)
 
-#define RAYCHEL_ASSERT_NORMALIZED(vec) RAYCHEL_ASSERT(equivalent(mag_sq(vec), 1.0f));
-
 #endif //!RAYCHEL_ASSERT_H
