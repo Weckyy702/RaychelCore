@@ -33,6 +33,7 @@
 #include <concepts>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <variant>
@@ -101,7 +102,8 @@ namespace Raychel {
         };
 
         template <
-            typename T, std::size_t BucketCapacity, Coordinate Coord, std::invocable<T&, const Coord&, const Coord&> ContainedIn>
+            typename T, std::size_t BucketCapacity, Coordinate Coord,
+            std::invocable<const T&, const Coord&, const Coord&> ContainedIn>
         class OctNode
         {
 
@@ -137,7 +139,7 @@ namespace Raychel {
                 std::aligned_storage_t<sizeof(T) * BucketCapacity, alignof(T)> storage_{};
             };
 
-            struct ChildrenContainer
+            class ChildrenContainer
             {
                 struct Child
                 {
@@ -145,7 +147,14 @@ namespace Raychel {
                     OctNode child;
                 };
 
-                std::vector<std::optional<Child>> children;
+                using Children = Child[];
+
+            public:
+                explicit ChildrenContainer() : children_{std::make_unique<Children>(8)}
+                {}
+
+            private:
+                std::unique_ptr<Children> children_;
             };
 
         public:
@@ -176,26 +185,24 @@ namespace Raychel {
             }
 
         private:
-            constexpr bool _insert_into_bucket(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
+            constexpr void _insert_into_bucket(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
             {
                 Bucket& bucket = std::get<Bucket>(elements_or_children_);
 
                 if (bucket.is_full()) {
-                    //bucket full, subdivide
-                    assert(false); //TODO
+                    //TODO
+                    assert(false);
+                    return;
                 }
 
                 bucket.insert(std::move(value));
-                return true;
             }
 
-            constexpr bool _insert_into_children(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
+            constexpr void _insert_into_children(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
             {
-                (void)value;
-
                 //TODO
+                (void)value;
                 assert(false);
-                return false;
             }
 
             constexpr void _subdivide() noexcept
@@ -209,7 +216,7 @@ namespace Raychel {
                 // Divide bounds into eight smaller subregions
                 // Create new OctNode for each subregion
 
-                //Sort item into children
+                //Sort items into children
                 // For every item
                 //  Calculate which child it belongs into
                 //  Put it into that node
