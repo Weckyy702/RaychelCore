@@ -29,8 +29,10 @@
 #define RAYCHELCORE_OCTTREE_H
 
 #include <array>
+#include <cassert>
 #include <concepts>
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <type_traits>
 #include <variant>
@@ -63,21 +65,30 @@ namespace Raychel {
         template <std::totally_ordered T>
         constexpr bool in_range(T value, T min, T max)
         {
-            return (value >= min) && (value < max);
+            return (value >= min) && (value <= max);
         }
 
-        template <MemberCoordinate Coord>
-        constexpr bool contained_in(const Coord& coord, const Coord& top_left, const Coord& bottom_right)
+        template <typename Object, auto Member>
+        constexpr auto get(const Object& obj)
         {
-            return in_range(coord.x, top_left.x, bottom_right.x) && in_range(coord.y, top_left.y, bottom_right.y) &&
-                   in_range(coord.z, top_left.z, bottom_right.z);
+            return std::invoke(Member, obj);
         }
 
-        template <InvocableCoordinate Coord>
-        constexpr bool contained_in(const Coord& coord, const Coord& top_left, const Coord& bottom_right)
+        template <Coordinate Object>
+        constexpr auto get_x = get<Object, &Object::x>;
+
+        template <Coordinate Object>
+        constexpr auto get_y = get<Object, &Object::y>;
+
+        template <Coordinate Object>
+        constexpr auto get_z = get<Object, &Object::z>;
+
+        template <Coordinate C, Coordinate BB>
+        constexpr bool contained_in(const C& coord, const BB& top_left, const BB& bottom_right)
         {
-            return in_range(coord.x(), top_left.x(), bottom_right.x()) && in_range(coord.y(), top_left.y(), bottom_right.y()) &&
-                   in_range(coord.z(), top_left.z(), bottom_right.z());
+            return in_range(get_x<C>(coord), get_x<BB>(top_left), get_x<BB>(bottom_right)) &&
+                   in_range(get_y<C>(coord), get_y<BB>(top_left), get_y<BB>(bottom_right)) &&
+                   in_range(get_z<C>(coord), get_z<BB>(top_left), get_z<BB>(bottom_right));
         }
 
         struct ContainedIn
@@ -90,15 +101,40 @@ namespace Raychel {
         };
 
         template <
-            typename T, std::size_t BucketCapacity, Coordinate Coord,
-            std::invocable<const Coord&, const Coord&, const Coord&> ContainedIn>
+            typename T, std::size_t BucketCapacity, Coordinate Coord, std::invocable<T&, const Coord&, const Coord&> ContainedIn>
         class OctNode
         {
 
-            struct Bucket
+            class Bucket
             {
-                std::array<T, BucketCapacity> items;
-                std::size_t current_index{};
+            public:
+                [[nodiscard]] constexpr bool is_full() const noexcept
+                {
+                    return next_index_ == BucketCapacity;
+                }
+
+                constexpr void insert(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
+                {
+                    if (is_full())
+                        return;
+
+                    new (_current()) T{std::move(value)};
+                    ++next_index_;
+                }
+
+            private:
+                constexpr T* _current() noexcept
+                {
+                    return _items() + next_index_;
+                }
+
+                constexpr T* _items()
+                {
+                    return reinterpret_cast<T*>(&storage_);
+                }
+
+                std::size_t next_index_{};
+                std::aligned_storage_t<sizeof(T) * BucketCapacity, alignof(T)> storage_{};
             };
 
             struct ChildrenContainer
@@ -124,14 +160,45 @@ namespace Raychel {
                 return elements_or_children_.index() == 1U;
             }
 
-            [[nodiscard]] constexpr bool insert(T value) //TODO: exception specification
+            [[nodiscard]] constexpr bool insert(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
             {
-                (void)value;
-                return false;
+                if (!_contained_in(value, top_left_corner_, bottom_right_corner_)) {
+                    return false;
+                }
+
+                if (has_children()) {
+                    _insert_into_children(std::move(value));
+                } else {
+                    _insert_into_bucket(std::move(value));
+                }
+
+                return true;
             }
 
         private:
-            constexpr void _divide() noexcept
+            constexpr bool _insert_into_bucket(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
+            {
+                Bucket& bucket = std::get<Bucket>(elements_or_children_);
+
+                if (bucket.is_full()) {
+                    //bucket full, subdivide
+                    assert(false); //TODO
+                }
+
+                bucket.insert(std::move(value));
+                return true;
+            }
+
+            constexpr bool _insert_into_children(T value) noexcept(std::is_nothrow_move_constructible_v<T>)
+            {
+                (void)value;
+
+                //TODO
+                assert(false);
+                return false;
+            }
+
+            constexpr void _subdivide() noexcept
             {
                 //Noop if we are already divided (shouldn't happen?)
                 if (has_children()) {
@@ -180,7 +247,11 @@ namespace Raychel {
 
         constexpr bool insert(T value)
         {
-            return root_.insert(std::move(value));
+            if (root_.insert(std::move(value))) {
+                ++size_;
+                return true;
+            }
+            return false;
         }
 
     private:
