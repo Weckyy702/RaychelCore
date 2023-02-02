@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -196,13 +197,41 @@ namespace Raychel {
         {
             template <Coordinate T>
                 requires std::copyable<T>
-            [[nodiscard]] constexpr T operator()(const T& obj) noexcept
+            [[nodiscard]] constexpr T operator()(const T& obj) const noexcept
             {
                 return obj;
             }
         };
 
-        template <std::size_t BucketSize, Coordinate Coordinate>
+        template <Coordinate T>
+        using ElementType = std::remove_cvref_t<std::invoke_result_t<decltype(&T::x), T>>;
+
+        struct GetDistance
+        {
+            template <typename T>
+            constexpr auto sq(T x) const noexcept
+            {
+                return x * x;
+            }
+
+            template <Coordinate Coord, typename ValueType = ElementType<Coord>>
+                requires std::floating_point<ValueType>
+            [[nodiscard]] constexpr ValueType operator()(const Coord& a, const Coord& b) const noexcept
+            {
+                return std::sqrt(sq(get_x(a) - get_x(b)) + sq(get_y(a) - get_y(b)) + sq(get_z(a) - get_z(b)));
+            }
+        };
+
+        template <Coordinate Coord>
+        struct ClosestItem
+        {
+            using ValueType = ElementType<Coord>;
+
+            std::size_t index;
+            ValueType distance;
+        };
+
+        template <std::size_t BucketSize, Coordinate Coordinate, typename GetDistance>
         class OctNode
         {
             using BoundingBox = BasicBoundingBox<Coordinate>;
@@ -362,16 +391,15 @@ namespace Raychel {
                 return size_;
             }
 
-            template <typename Allocator>
             constexpr void
-            collect_closest(const Coordinate& where, std::vector<std::size_t, Allocator>& accumulator) const noexcept
+            collect_closest(const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
             {
                 //Bail out if this node is empty
                 if (size() == 0U)
                     return;
 
                 if (!has_children()) {
-                    _collect_own_indecies(accumulator);
+                    _collect_own_indecies(where, maybe_closest_item);
                     return;
                 }
 
@@ -383,7 +411,7 @@ namespace Raychel {
                     //The index encodes a location. See _child_index_for
 
                     if (((i ^ side_mask) & care_mask) == care_mask) {
-                        children[i].collect_closest(where, accumulator);
+                        children[i].collect_closest(where, maybe_closest_item);
                     }
                 }
             }
@@ -428,13 +456,27 @@ namespace Raychel {
             }
 
         private:
-            template <typename Allocator>
-            constexpr void _collect_own_indecies(std::vector<std::size_t, Allocator>& indecies) const noexcept
+            constexpr void _collect_own_indecies(
+                const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
             {
-                indecies.reserve(indecies.size() + size_);
+                const auto& indecies = std::get<IndeciesContainer>(indecies_or_children_);
 
-                const auto& bucket = std::get<IndeciesContainer>(indecies_or_children_);
-                indecies.insert(indecies.end(), bucket.begin(), bucket.end());
+                for (std::size_t i{}; i != BucketSize; ++i) {
+                    const auto coord = indecies.coord_at(i);
+                    const auto index = indecies.index_at(i);
+
+                    const auto distance = _get_distance(where, coord);
+
+                    if (!maybe_closest_item.has_value()) [[unlikely]] {
+                        maybe_closest_item.emplace(index, distance);
+                        continue;
+                    }
+
+                    if (distance < maybe_closest_item->distance) {
+                        maybe_closest_item->index = index;
+                        maybe_closest_item->distance = distance;
+                    }
+                }
             }
 
             [[nodiscard]] constexpr std::size_t _child_index_for(Coordinate where)
@@ -460,7 +502,7 @@ namespace Raychel {
             [[nodiscard]] constexpr auto _calculate_children_masks(const Coordinate& where) const noexcept
             {
                 //!!BITMAGIC!!
-                //return two binary numbers, where the second one dictates if the point is inside or outside this cell with layout
+                //returns two binary numbers, where the second one dictates if the point is inside or outside this cell with layout
                 // 00000zyx
                 //The first number indicates what side of the midpoint the point lies with 0 meaning less and layout
                 // 00000zyx
@@ -475,7 +517,7 @@ namespace Raychel {
                     care_mask &= 0b101U;
                 }
                 if (in_range(get_z(where), get_z(bounding_box_.bottom_front_left), get_z(bounding_box_.top_back_right))) {
-                    care_mask &= 011U;
+                    care_mask &= 0b011U;
                 }
 
                 if (get_x(where) <= get_x(midpoint_)) {
@@ -525,6 +567,8 @@ namespace Raychel {
             BoundingBox bounding_box_;
             Coordinate midpoint_;
             std::size_t size_{};
+
+            GetDistance _get_distance{};
         };
     } // namespace details
 
@@ -546,12 +590,20 @@ namespace Raychel {
     }
 
     template <
-        typename T, std::size_t BucketSize = 10, Coordinate Coordinate = T, std::invocable<const T&> T2Coord = details::T2Coord>
+        typename T, std::size_t BucketSize = 10, Coordinate Coordinate = T, std::invocable<const T&> T2Coord = details::T2Coord,
+        std::invocable<const Coordinate&, const Coordinate&> GetDistance = details::GetDistance>
         requires(std::is_invocable_r_v<Coordinate, T2Coord, const T&>) && std::copyable<T>
     class OcTree
     {
-        using Node = details::OctNode<BucketSize, Coordinate>;
+        using Node = details::OctNode<BucketSize, Coordinate, GetDistance>;
         using BoundingBox = BasicBoundingBox<Coordinate>;
+
+        template <typename Ref, typename Dist>
+        struct ClosestItem
+        {
+            Ref value;
+            Dist distance;
+        };
 
     public:
         constexpr explicit OcTree(const Coordinate& a, const Coordinate& b) : root_{make_bounding_box(a, b)}
@@ -595,22 +647,22 @@ namespace Raychel {
             return elements_.cend();
         }
 
-        template <typename Allocator = std::allocator<T>>
-        std::vector<T, Allocator> closest_to(const Coordinate& point, Allocator allocator = {}) const noexcept
+        [[nodiscard]] constexpr auto closest_to(const Coordinate& where) const noexcept
+            -> std::optional<ClosestItem<const T&, details::ElementType<Coordinate>>>
         {
-            using IndexAllocator = typename std::allocator_traits<Allocator>::template rebind_alloc<std::size_t>;
-            std::vector<std::size_t, IndexAllocator> indecies{};
+            if (size() == 0)
+                return std::nullopt;
 
-            root_.collect_closest(point, indecies);
+            std::optional<details::ClosestItem<Coordinate>> closest_item{};
 
-            std::vector<T, Allocator> result{allocator};
-            result.reserve(indecies.size());
+            root_.collect_closest(where, closest_item);
 
-            std::transform(indecies.begin(), indecies.end(), std::back_inserter(result), [this](std::size_t index) {
-                return elements_[index];
-            });
+            if (!closest_item.has_value())
+                return std::nullopt;
 
-            return result;
+            const auto [index, distance] = closest_item.value();
+
+            return ClosestItem<const T&, details::ElementType<Coordinate>>{elements_[index], distance};
         }
 
         void debug_print() const noexcept
@@ -622,6 +674,7 @@ namespace Raychel {
         Node root_;
         std::vector<T> elements_{};
         T2Coord _t2coord{};
+        GetDistance _get_distance{};
     };
 
 } //namespace Raychel
