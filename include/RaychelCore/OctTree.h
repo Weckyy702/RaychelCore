@@ -227,6 +227,9 @@ namespace Raychel {
         {
             using ValueType = ElementType<Coord>;
 
+            explicit constexpr ClosestItem(std::size_t _index, ValueType _distance) : index{_index}, distance{_distance}
+            {}
+
             std::size_t index;
             ValueType distance;
         };
