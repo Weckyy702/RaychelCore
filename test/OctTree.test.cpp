@@ -2,6 +2,7 @@
 
 #include "catch2/catch.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <memory_resource>
 #include <random>
@@ -47,9 +48,9 @@ TEST_CASE("OctTree: Subdivison when inserting more than N elements")
     std::mt19937 rng{12345};
     std::uniform_real_distribution<double> dist{-100.0, 100.0};
 
-    for (std::size_t _i{}; _i != 100; ++_i) {
+    for (std::size_t i{}; i != 100; ++i) {
         REQUIRE(tree.insert(vec3{dist(rng), dist(rng), dist(rng)}));
-        REQUIRE(tree.size() == _i + 1);
+        REQUIRE(tree.size() == i + 1);
     }
 }
 
@@ -66,8 +67,6 @@ TEST_CASE("OctTree: get closest points")
     tree.insert(vec3{10, 10, 10});
 
     {
-        tree.debug_print();
-
         const auto entry = tree.closest_to(vec3{0, 0, 0});
 
         REQUIRE(entry.has_value());
@@ -92,9 +91,10 @@ TEST_CASE("OctTree: get closest points")
 
         vec3 closest_point{0, 0, 0};
         double closest_distance = 1e9;
+
         for (std::size_t i{}; i != 100'000; ++i) {
             vec3 p{dist(rng), dist(rng), dist(rng)};
-            const auto distance = Raychel::details::GetDistance{}(p, vec3{50, 50, 50});
+            const auto distance = Raychel::details::GetDistanceToPoint{}(p, vec3{50, 50, 50});
 
             if (distance < closest_distance) {
                 closest_point = p;
@@ -104,6 +104,7 @@ TEST_CASE("OctTree: get closest points")
             tree.insert(p);
         }
 
+        const auto start = std::chrono::high_resolution_clock::now();
         const auto maybe_item = tree.closest_to(vec3{50, 50, 50});
 
         REQUIRE(maybe_item.has_value());
@@ -112,5 +113,7 @@ TEST_CASE("OctTree: get closest points")
 
         REQUIRE(point == closest_point);
         REQUIRE(distance == closest_distance);
+
+        std::cerr << duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start) << '\n';
     }
 }

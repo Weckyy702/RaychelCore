@@ -28,6 +28,8 @@
 #ifndef RAYCHELCORE_OCTTREE_H
 #define RAYCHELCORE_OCTTREE_H
 
+#include "RaychelCore/ClassMacros.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -35,6 +37,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -46,19 +49,24 @@
 
 namespace Raychel {
     // clang-format off
+    template<typename T>
+    concept MemberCoordinate = requires(T t)
+    {
+        { t.x } -> std::totally_ordered;
+        { t.y } -> std::totally_ordered;
+        { t.z } -> std::totally_ordered;
+    };
+
+    template<typename T>
+    concept InvokeCoordinate = requires(T t)
+    {
+        { t.x() } -> std::totally_ordered;
+        { t.y() } -> std::totally_ordered;
+        { t.z() } -> std::totally_ordered;
+    };
+
     template <typename T>
-    concept Coordinate = requires(T t) {
-        requires requires {
-            { t.x } -> std::totally_ordered;
-            { t.y } -> std::totally_ordered;
-            { t.z } -> std::totally_ordered;
-        } || requires {
-            { t.x() } -> std::totally_ordered;
-            { t.y() } -> std::totally_ordered;
-            { t.z() } -> std::totally_ordered;
-        };
-        //TODO: T must be constructible from its three coordinates
-   };
+    concept Coordinate = MemberCoordinate<T> || InvokeCoordinate<T>;
     // clang-format on
 
     template <Coordinate Coordinate>
@@ -68,54 +76,77 @@ namespace Raychel {
     };
 
     namespace details {
-        template <typename Obj, auto Member>
-            requires(std::is_member_pointer_v<decltype(Member)>)
-        [[nodiscard]] constexpr auto get_member(const Obj& obj)
+
+        template <MemberCoordinate T>
+        constexpr auto& get_x(T& obj)
         {
-            return std::invoke(Member, obj);
+            return obj.x;
         }
 
-        template <typename Obj, auto Member>
-            requires(std::is_member_pointer_v<decltype(Member)>)
-        [[nodiscard]] constexpr auto& get_member(Obj& obj)
+        template <MemberCoordinate T>
+        constexpr const auto& get_x(const T& obj)
         {
-            return std::invoke(Member, obj);
+            return obj.x;
         }
 
-        template <Coordinate Coord>
-        constexpr auto get_x(const Coord& coord)
+        template <MemberCoordinate T>
+        constexpr auto& get_y(T& obj)
         {
-            return get_member<Coord, &Coord::x>(coord);
+            return obj.y;
         }
 
-        template <Coordinate Coord>
-        constexpr auto& get_x(Coord& coord)
+        template <MemberCoordinate T>
+        constexpr const auto& get_y(const T& obj)
         {
-            return get_member<Coord, &Coord::x>(coord);
+            return obj.y;
         }
 
-        template <Coordinate Coord>
-        constexpr auto get_y(const Coord& coord)
+        template <MemberCoordinate T>
+        constexpr auto& get_z(T& obj)
         {
-            return get_member<Coord, &Coord::y>(coord);
+            return obj.z;
         }
 
-        template <Coordinate Coord>
-        constexpr auto& get_y(Coord& coord)
+        template <MemberCoordinate T>
+        constexpr const auto& get_z(const T& obj)
         {
-            return get_member<Coord, &Coord::y>(coord);
+            return obj.z;
         }
 
-        template <Coordinate Coord>
-        constexpr auto get_z(const Coord& coord)
+        template <InvokeCoordinate T>
+        constexpr auto& get_x(T& obj)
         {
-            return get_member<Coord, &Coord::z>(coord);
+            return obj.x();
         }
 
-        template <Coordinate Coord>
-        constexpr auto& get_z(Coord& coord)
+        template <InvokeCoordinate T>
+        constexpr const auto& get_x(const T& obj)
         {
-            return get_member<Coord, &Coord::z>(coord);
+            return obj.x();
+        }
+
+        template <InvokeCoordinate T>
+        constexpr auto& get_y(T& obj)
+        {
+            return obj.y();
+        }
+
+        template <InvokeCoordinate T>
+        constexpr const auto& get_y(const T& obj)
+        {
+            return obj.y();
+        }
+
+        template <InvokeCoordinate T>
+        constexpr auto& get_z(T& obj)
+        {
+            return obj.z();
+        }
+
+        template <InvokeCoordinate T>
+        constexpr const auto& get_z(const T& obj)
+        {
+            return obj.z();
         }
 
         template <Coordinate Coord>
@@ -128,48 +159,66 @@ namespace Raychel {
             };
         }
 
+        template <std::size_t CornerIndex, Coordinate Coord>
+            requires(std::copy_constructible<Coord> && (CornerIndex < 8U))
+        constexpr Coord get_corner(const BasicBoundingBox<Coord>& b)
+        {
+            Coord res{b.bottom_front_left};
+
+            if constexpr (CornerIndex & 1U) {
+                get_x(res) = get_x(b.top_back_right);
+            }
+            if constexpr (CornerIndex & 2U) {
+                get_y(res) = get_y(b.top_back_right);
+            }
+            if constexpr (CornerIndex & 4U) {
+                get_z(res) = get_z(b.top_back_right);
+            }
+
+            return res;
+        }
+
         template <std::totally_ordered T>
         constexpr bool in_range(const T& value, const T& min, const T& max)
         {
-            return (value >= min) && (value <= max);
+            return (min <= value) && (value <= max);
         }
 
         template <Coordinate Coord>
-        [[nodiscard]] constexpr bool contained_in(const Coord& coordinate, const BasicBoundingBox<Coord>& bounding_box)
+        [[nodiscard]] constexpr bool contains(const BasicBoundingBox<Coord>& bb, const Coord& c)
         {
-            return in_range(
-                       get_x<Coord>(coordinate),
-                       get_x<Coord>(bounding_box.bottom_front_left),
-                       get_x<Coord>(bounding_box.top_back_right)) &&
-                   in_range(
-                       get_y<Coord>(coordinate),
-                       get_y<Coord>(bounding_box.bottom_front_left),
-                       get_y<Coord>(bounding_box.top_back_right)) &&
-                   in_range(
-                       get_z<Coord>(coordinate),
-                       get_z<Coord>(bounding_box.bottom_front_left),
-                       get_z<Coord>(bounding_box.top_back_right));
+            return in_range(get_x(c), get_x(bb.bottom_front_left), get_x(bb.top_back_right)) &&
+                   in_range(get_y(c), get_y(bb.bottom_front_left), get_y(bb.top_back_right)) &&
+                   in_range(get_z(c), get_z(bb.bottom_front_left), get_z(bb.top_back_right));
         }
 
-        template <std::size_t Index, Coordinate Coord>
-            requires(Index < 8U)
+        template <Coordinate Coord>
+        [[nodiscard]] constexpr bool overlaps(const BasicBoundingBox<Coord>& a, const BasicBoundingBox<Coord>& b)
+        {
+            return contains(b, get_corner<0>(a)) || contains(b, get_corner<1>(a)) || contains(b, get_corner<2>(a)) ||
+                   contains(b, get_corner<3>(a)) || contains(b, get_corner<4>(a)) || contains(b, get_corner<5>(a)) ||
+                   contains(b, get_corner<6>(a)) || contains(b, get_corner<7>(a));
+        }
+
+        template <std::size_t ChildIndex, Coordinate Coord>
+            requires(ChildIndex < 8U)
         [[nodiscard]] constexpr BasicBoundingBox<Coord> bounding_box_for(
             const BasicBoundingBox<Coord>& bounding_box, const Coord& midpoint) noexcept
         {
             Coord min{bounding_box.bottom_front_left};
             Coord max{midpoint};
 
-            if constexpr (Index & 1U) {
+            if constexpr (ChildIndex & 1U) {
                 get_x<Coord>(min) = get_x<Coord>(midpoint);
                 get_x<Coord>(max) = get_x<Coord>(bounding_box.top_back_right);
             }
 
-            if constexpr (Index & 2U) {
+            if constexpr (ChildIndex & 2U) {
                 get_y<Coord>(min) = get_y<Coord>(midpoint);
                 get_y<Coord>(max) = get_y<Coord>(bounding_box.top_back_right);
             }
 
-            if constexpr (Index & 4U) {
+            if constexpr (ChildIndex & 4U) {
                 get_z<Coord>(min) = get_z<Coord>(midpoint);
                 get_z<Coord>(max) = get_z<Coord>(bounding_box.top_back_right);
             }
@@ -178,7 +227,7 @@ namespace Raychel {
         }
 
         template <Coordinate Coord>
-        [[nodiscard]] std::array<BasicBoundingBox<Coord>, 8>
+        [[nodiscard]] constexpr std::array<BasicBoundingBox<Coord>, 8>
         subdivide_bounding_box(const BasicBoundingBox<Coord>& bounding_box, const Coord& midpoint) noexcept
         {
             return {
@@ -193,20 +242,20 @@ namespace Raychel {
             };
         }
 
-        struct T2Coord
+        struct BoundingBoxFromCoordinate
         {
             template <Coordinate T>
                 requires std::copyable<T>
-            [[nodiscard]] constexpr T operator()(const T& obj) const noexcept
+            [[nodiscard]] constexpr BasicBoundingBox<T> operator()(const T& obj) const noexcept
             {
-                return obj;
+                return BasicBoundingBox<T>{obj, obj};
             }
         };
 
         template <Coordinate T>
-        using ElementType = std::remove_cvref_t<std::invoke_result_t<decltype(&T::x), T>>;
+        using ElementType = std::remove_cvref_t<decltype(get_x<T>(std::declval<const T&>()))>;
 
-        struct GetDistance
+        struct GetDistanceToPoint
         {
             template <typename T>
             constexpr auto sq(T x) const noexcept
@@ -234,28 +283,38 @@ namespace Raychel {
             ValueType distance;
         };
 
-        template <std::size_t BucketSize, Coordinate Coordinate, typename GetDistance>
+        template <std::size_t BucketSize, Coordinate Coordinate, typename GetDistance, typename Tree>
         class OctNode
         {
             using BoundingBox = BasicBoundingBox<Coordinate>;
 
-            class IndeciesContainer
+            class IndexContainer
             {
             public:
+                constexpr IndexContainer() = default;
+
+                RAYCHEL_MAKE_DEFAULT_COPY(IndexContainer)
+                RAYCHEL_MAKE_DEFAULT_MOVE(IndexContainer)
+
                 [[nodiscard]] constexpr bool is_full() const noexcept
                 {
                     return next_slot_ == BucketSize;
                 }
 
-                constexpr void insert(std::size_t index_in_tree, const Coordinate& where) noexcept
+                [[nodiscard]] constexpr std::size_t size() const noexcept
+                {
+                    return next_slot_;
+                }
+
+                constexpr void insert(std::size_t index_in_tree, const BoundingBox& where) noexcept
                 {
                     indecies_[next_slot_] = index_in_tree;
-                    new (_locations() + next_slot_) Coordinate{where};
+                    new (_locations() + next_slot_) BoundingBox{where};
 
                     ++next_slot_;
                 }
 
-                [[nodiscard]] constexpr Coordinate coord_at(std::size_t index) const noexcept
+                [[nodiscard]] constexpr BoundingBox bounding_box_at(std::size_t index) const noexcept
                 {
                     return _locations()[index];
                 }
@@ -275,77 +334,86 @@ namespace Raychel {
                     return begin() + next_slot_;
                 }
 
-                ~IndeciesContainer() noexcept
-                    requires(!std::is_trivially_destructible_v<Coordinate>)
+                ~IndexContainer() noexcept
+                    requires(!std::is_trivially_destructible_v<BoundingBox>)
                 {
                     for (std::size_t i{}; i != BucketSize; ++i) {
-                        _locations()[i].~Coordinate();
+                        _locations()[i].~BoundingBox();
                     }
                 }
 
-                ~IndeciesContainer() noexcept
-                    requires(std::is_trivially_destructible_v<Coordinate>)
+                ~IndexContainer() noexcept
+                    requires(std::is_trivially_destructible_v<BoundingBox>)
                 = default;
 
             private:
-                [[nodiscard]] constexpr const Coordinate* _locations() const noexcept
+                [[nodiscard]] constexpr const BoundingBox* _locations() const noexcept
                 {
-                    return reinterpret_cast<const Coordinate*>(&index_data);
+                    return reinterpret_cast<const BoundingBox*>(&bounding_boxes_);
                 }
 
-                [[nodiscard]] constexpr Coordinate* _locations() noexcept
+                [[nodiscard]] constexpr BoundingBox* _locations() noexcept
                 {
-                    return reinterpret_cast<Coordinate*>(&index_data);
+                    return reinterpret_cast<BoundingBox*>(&bounding_boxes_);
                 }
 
-                std::array<std::size_t, BucketSize> indecies_;
-                std::aligned_storage_t<sizeof(Coordinate) * BucketSize> index_data{};
+                std::array<std::size_t, BucketSize> indecies_{};
+                std::aligned_storage_t<sizeof(BoundingBox) * BucketSize> bounding_boxes_{};
+
                 std::size_t next_slot_{};
             };
 
-            class ChildrenContainer
+            class ChildContainer
             {
-                using Children = OctNode[];
-
             public:
-                constexpr explicit ChildrenContainer(std::array<BoundingBox, 8> bounding_boxes)
+                constexpr explicit ChildContainer(std::array<BoundingBox, 8> bounding_boxes, Tree* parent)
                 {
-                    children_.reserve(8U);
-
+                    nodes_.reserve(8U);
                     for (std::size_t i{}; i != 8; ++i) {
-                        children_.emplace_back(std::move(bounding_boxes[i]));
+                        nodes_.emplace_back(bounding_boxes[i], parent);
                     }
                 }
 
-                [[nodiscard]] constexpr OctNode& operator[](std::size_t index) noexcept
+                [[nodiscard]] constexpr OctNode& operator[](std::size_t i) noexcept
                 {
-                    return children_[index];
+                    return nodes_[i];
                 }
 
-                [[nodiscard]] constexpr const OctNode& operator[](std::size_t index) const noexcept
+                [[nodiscard]] constexpr const OctNode& operator[](std::size_t i) const noexcept
                 {
-                    return children_[index];
+                    return nodes_[i];
+                }
+
+                [[nodiscard]] constexpr auto begin() noexcept
+                {
+                    return nodes_.begin();
                 }
 
                 [[nodiscard]] constexpr auto begin() const noexcept
                 {
-                    return children_.begin();
+                    return nodes_.begin();
+                }
+
+                [[nodiscard]] constexpr auto end() noexcept
+                {
+                    return nodes_.end();
                 }
 
                 [[nodiscard]] constexpr auto end() const noexcept
                 {
-                    return children_.end();
+                    return nodes_.end();
                 }
 
             private:
-                //TODO: we use a vector even though the number of children is constant and known at compile time
-                //Can't use an array tho beacuse the data structure is recursive
-                std::vector<OctNode> children_{};
+                std::vector<OctNode> nodes_{};
             };
 
         public:
-            explicit constexpr OctNode(BoundingBox bounding_box)
-                : bounding_box_{std::move(bounding_box)}, midpoint_{midpoint(bounding_box_)}
+            explicit constexpr OctNode(BoundingBox bounding_box, Tree* parent)
+                : indecies_or_children_{IndexContainer()},
+                  tree_{parent},
+                  bounding_box_{std::move(bounding_box)},
+                  midpoint_{midpoint(bounding_box_)}
             {}
 
             [[nodiscard]] constexpr BoundingBox bounding_box() const noexcept
@@ -355,38 +423,27 @@ namespace Raychel {
 
             [[nodiscard]] constexpr bool has_children() const noexcept
             {
-                return indecies_or_children_.index() == 1U;
+                return std::holds_alternative<ChildContainer>(indecies_or_children_);
             }
 
-            constexpr void insert(std::size_t index_in_tree, const Coordinate& where) noexcept
+            constexpr void insert(std::size_t index_in_tree, const BoundingBox& where) noexcept
             {
                 ++size_;
+
                 if (has_children()) {
                     _insert_into_children(index_in_tree, where);
                     return;
                 }
 
-                IndeciesContainer& bucket = std::get<IndeciesContainer>(indecies_or_children_);
+                IndexContainer& bucket = std::get<IndexContainer>(indecies_or_children_);
 
                 if (bucket.is_full()) {
-                    //Subdivide and insert into children
                     _subdivide();
                     _insert_into_children(index_in_tree, where);
                     return;
                 }
 
                 bucket.insert(index_in_tree, where);
-            }
-
-            [[nodiscard]] constexpr OctNode& node_containing(const Coordinate& where) const noexcept
-            {
-                if (!has_children())
-                    return *this;
-
-                const auto& children = std::get<ChildrenContainer>(indecies_or_children_);
-                const auto child_index = _child_index_for(where);
-
-                return children[child_index].node_containing(where);
             }
 
             [[nodiscard]] constexpr std::size_t size() const noexcept
@@ -407,7 +464,7 @@ namespace Raychel {
                 }
 
                 //Add only the children neighbouring that point
-                const auto& children = std::get<ChildrenContainer>(indecies_or_children_);
+                const auto& children = std::get<ChildContainer>(indecies_or_children_);
                 const auto [care_mask, side_mask] = _calculate_children_masks(where);
 
                 for (std::size_t i{}; i != 8; ++i) {
@@ -436,15 +493,17 @@ namespace Raychel {
 
                 if (!has_children()) {
                     std::cerr << indent << " Indecies={";
-
-                    const auto& indecies = std::get<IndeciesContainer>(indecies_or_children_);
-                    for (std::size_t i{}; i != BucketSize - 1; ++i) {
-                        std::cerr << indecies.index_at(i) << ", ";
+                    const auto& indecies = std::get<IndexContainer>(indecies_or_children_);
+                    if (indecies.size() != 0U) {
+                        for (std::size_t i{}; i != indecies.size() - 1; ++i) {
+                            std::cerr << indecies.index_at(i) << ", ";
+                        }
+                        std::cerr << indecies.index_at(indecies.size() - 1);
                     }
-                    std::cerr << indecies.index_at(BucketSize - 1) << "}\n" << indent << "}\n";
+                    std::cout << "}\n";
                 } else {
                     std::cerr << indent << " Children={\n";
-                    const auto& children = std::get<ChildrenContainer>(indecies_or_children_);
+                    const auto& children = std::get<ChildContainer>(indecies_or_children_);
 
                     std::size_t index{};
                     for (const auto& child : children) {
@@ -454,7 +513,20 @@ namespace Raychel {
                         std::cerr << indent << ' ' << index - 1 << ": ";
                         child.debug_print(depth + 1);
                     }
-                    std::cerr << indent << "}\n";
+                }
+                std::cout << indent << "}\n";
+            }
+
+            constexpr void update_parent(Tree* parent) noexcept
+            {
+                tree_ = parent;
+
+                if (has_children()) {
+                    auto& children = std::get<ChildContainer>(indecies_or_children_);
+
+                    for (auto& child : children) {
+                        child.update_parent(parent);
+                    }
                 }
             }
 
@@ -462,13 +534,12 @@ namespace Raychel {
             constexpr void _collect_own_indecies(
                 const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
             {
-                const auto& indecies = std::get<IndeciesContainer>(indecies_or_children_);
+                const auto& indecies = std::get<IndexContainer>(indecies_or_children_);
 
-                for (std::size_t i{}; i != BucketSize; ++i) {
-                    const auto coord = indecies.coord_at(i);
+                for (std::size_t i{}; i != indecies.size(); ++i) {
                     const auto index = indecies.index_at(i);
 
-                    const auto distance = _get_distance(where, coord);
+                    const auto distance = _get_distance(tree_->elements_.at(index), where);
 
                     if (!maybe_closest_item.has_value()) [[unlikely]] {
                         maybe_closest_item.emplace(index, distance);
@@ -480,26 +551,6 @@ namespace Raychel {
                         maybe_closest_item->distance = distance;
                     }
                 }
-            }
-
-            [[nodiscard]] constexpr std::size_t _child_index_for(Coordinate where)
-            {
-                //!!BITMAGIC!!
-                // returns binary |00000000|...|00000abc|
-                // where a = x-axis; b = y-axis; c = z-axis
-
-                std::size_t index{};
-                if (get_x<Coordinate>(where) > get_x<Coordinate>(midpoint_)) {
-                    index |= 1U;
-                }
-                if (get_y<Coordinate>(where) > get_y<Coordinate>(midpoint_)) {
-                    index |= 2U;
-                }
-                if (get_z<Coordinate>(where) > get_z<Coordinate>(midpoint_)) {
-                    index |= 4U;
-                }
-
-                return index;
             }
 
             [[nodiscard]] constexpr auto _calculate_children_masks(const Coordinate& where) const noexcept
@@ -536,36 +587,40 @@ namespace Raychel {
                 return std::make_pair(care_mask, side_mask);
             }
 
-            constexpr void _insert_into_children(std::size_t index_in_tree, const Coordinate& where) noexcept
+            constexpr void _insert_into_children(std::size_t index_in_tree, const BoundingBox& where) noexcept
             {
-                const auto child_index = _child_index_for(where);
-                auto& children = std::get<ChildrenContainer>(indecies_or_children_);
+                auto& children = std::get<ChildContainer>(indecies_or_children_);
 
-                children[child_index].insert(index_in_tree, where);
+                for (auto& child : children) {
+                    if (overlaps(where, child.bounding_box_))
+                        child.insert(index_in_tree, where);
+                }
             }
 
             constexpr void _subdivide() noexcept
             {
                 //Save current items
-                auto items = std::get<IndeciesContainer>(std::move(indecies_or_children_));
+                auto items = std::get<IndexContainer>(std::move(indecies_or_children_));
 
                 //Create children
                 // Create 8 children, each with its own subdivision of the bounding box
-                ChildrenContainer children{subdivide_bounding_box(bounding_box_, midpoint_)};
+                ChildContainer children{subdivide_bounding_box(bounding_box_, midpoint_), tree_};
 
                 // Put the items into the children using their coordinates
                 // TODO: try doing this in one step while initializing the children
                 for (std::size_t i{}; i != BucketSize; ++i) {
-                    const auto where = items.coord_at(i);
-                    const auto index = _child_index_for(where);
-
-                    children[index].insert(items.index_at(i), where);
+                    const auto where = items.bounding_box_at(i);
+                    for (std::size_t j{}; j != 8U; ++j) {
+                        if (overlaps(where, children[j].bounding_box_))
+                            children[j].insert(items.index_at(i), where);
+                    }
                 }
 
                 indecies_or_children_ = std::move(children);
             }
 
-            std::variant<IndeciesContainer, ChildrenContainer> indecies_or_children_{};
+            std::variant<IndexContainer, ChildContainer> indecies_or_children_{};
+            Tree* tree_;
 
             BoundingBox bounding_box_;
             Coordinate midpoint_;
@@ -573,6 +628,7 @@ namespace Raychel {
 
             GetDistance _get_distance{};
         };
+
     } // namespace details
 
     template <Coordinate Coord>
@@ -593,13 +649,16 @@ namespace Raychel {
     }
 
     template <
-        typename T, std::size_t BucketSize = 10, Coordinate Coordinate = T, std::invocable<const T&> T2Coord = details::T2Coord,
-        std::invocable<const Coordinate&, const Coordinate&> GetDistance = details::GetDistance>
-        requires(std::is_invocable_r_v<Coordinate, T2Coord, const T&>) && std::copyable<T>
+        typename T, std::size_t BucketSize = 10, Coordinate Coordinate = T,
+        std::invocable<const T&> GetBoundingBox = details::BoundingBoxFromCoordinate,
+        std::invocable<const T&, const Coordinate&> GetDistance = details::GetDistanceToPoint>
+        requires(std::is_invocable_r_v<BasicBoundingBox<Coordinate>, GetBoundingBox, const T&>) && std::copyable<T>
     class OcTree
     {
-        using Node = details::OctNode<BucketSize, Coordinate, GetDistance>;
+        using Node = details::OctNode<BucketSize, Coordinate, GetDistance, OcTree>;
         using BoundingBox = BasicBoundingBox<Coordinate>;
+
+        friend Node;
 
         template <typename Ref, typename Dist>
         struct ClosestItem
@@ -609,8 +668,47 @@ namespace Raychel {
         };
 
     public:
-        constexpr explicit OcTree(const Coordinate& a, const Coordinate& b) : root_{make_bounding_box(a, b)}
-        {}
+        constexpr OcTree(const Coordinate& a, const Coordinate& b, std::vector<T> items = {})
+            : root_{make_bounding_box(a, b), this}, elements_(std::move(items))
+        {
+            _build_from_items();
+        }
+
+        constexpr explicit OcTree(std::pair<Coordinate, Coordinate> bounding_box, std::vector<T> items = {})
+            : root_{make_bounding_box(bounding_box.first, bounding_box.second), this}, elements_(std::move(items))
+        {
+            _build_from_items();
+        }
+
+        constexpr OcTree(const OcTree& other) : root_{other.root_}, elements_{other.elements_}
+        {
+            _root().update_parent(this);
+        }
+
+        constexpr OcTree& operator=(const OcTree& other)
+        {
+            root_ = other.root_;
+            elements_ = other.elements_;
+
+            _root().update_parent(this);
+
+            return *this;
+        }
+
+        constexpr OcTree(OcTree&& other) noexcept : root_{std::move(other.root_)}, elements_{std::move(other.elements_)}
+        {
+            _root().update_parent(this);
+        }
+
+        constexpr OcTree& operator=(OcTree&& other) noexcept
+        {
+            root_ = std::move(other.root_);
+            elements_ = std::move(other.elements_);
+
+            _root().update_parent(this);
+
+            return *this;
+        }
 
         [[nodiscard]] constexpr std::size_t size() const noexcept
         {
@@ -619,13 +717,13 @@ namespace Raychel {
 
         constexpr bool insert(T value)
         {
-            const auto where = _t2coord(value);
+            const auto where = _get_bounding_box(value);
 
-            if (!details::contained_in(where, root_.bounding_box()))
+            if (!details::overlaps(where, _root().bounding_box()))
                 return false;
 
             elements_.push_back(std::move(value));
-            root_.insert(elements_.size() - 1, where);
+            _root().insert(elements_.size() - 1, where);
 
             return true;
         }
@@ -640,14 +738,14 @@ namespace Raychel {
             return elements_.end();
         }
 
-        constexpr auto cbegin() const noexcept
+        constexpr auto begin() const noexcept
         {
-            return elements_.cbegin();
+            return elements_.begin();
         }
 
-        constexpr auto cend() const noexcept
+        constexpr auto end() const noexcept
         {
-            return elements_.cend();
+            return elements_.end();
         }
 
         [[nodiscard]] constexpr auto closest_to(const Coordinate& where) const noexcept
@@ -658,7 +756,7 @@ namespace Raychel {
 
             std::optional<details::ClosestItem<Coordinate>> closest_item{};
 
-            root_.collect_closest(where, closest_item);
+            _root().collect_closest(where, closest_item);
 
             if (!closest_item.has_value())
                 return std::nullopt;
@@ -670,14 +768,38 @@ namespace Raychel {
 
         void debug_print() const noexcept
         {
-            root_.debug_print(0U);
+            _root().debug_print(0U);
+        }
+
+        [[nodiscard]] constexpr const auto& elements() const noexcept
+        {
+            return elements_;
         }
 
     private:
-        Node root_;
+        [[nodiscard]] constexpr Node& _root() noexcept
+        {
+            return root_;
+        }
+
+        [[nodiscard]] constexpr const Node& _root() const noexcept
+        {
+            return root_;
+        }
+
+        constexpr void _build_from_items() noexcept
+        {
+            if (elements_.empty())
+                return;
+
+            for (std::size_t i{}; i != elements_.size(); ++i) {
+                _root().insert(i, _get_bounding_box(elements_[i]));
+            }
+        }
+
+        Node root_{};
         std::vector<T> elements_{};
-        T2Coord _t2coord{};
-        GetDistance _get_distance{};
+        GetBoundingBox _get_bounding_box{};
     };
 
 } //namespace Raychel
