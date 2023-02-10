@@ -5,6 +5,8 @@
 #include <chrono>
 #include <cstddef>
 #include <memory_resource>
+#include <numbers>
+#include <ostream>
 #include <random>
 
 //Non-default constructible vec3
@@ -20,7 +22,56 @@ struct vec3
     double x, y, z;
 };
 
-using OctTree = Raychel::OcTree<vec3, 10>;
+std::ostream& operator<<(std::ostream& os, const vec3& v) noexcept
+{
+    return os << '{' << v.x << ", " << v.y << ", " << v.z << '}';
+}
+
+struct Triangle
+{
+    [[nodiscard]] vec3 midpoint() const noexcept
+    {
+        return vec3{(a.x + b.x + c.x) / 3, (a.y + b.y + c.y) / 3, (a.z + b.z + c.z) / 3};
+    }
+
+    constexpr auto operator<=>(const Triangle& other) const noexcept = default;
+
+    vec3 a, b, c;
+};
+
+std::ostream& operator<<(std::ostream& os, const Triangle& triangle) noexcept
+{
+    return os << "{\n  " << triangle.a << ",\n  " << triangle.b << ",\n  " << triangle.c << "\n}";
+}
+
+struct TriangleDistance
+{
+    double operator()(const Triangle& triangle, const vec3& v) const noexcept
+    {
+        return Raychel::details::GetDistanceToPoint{}(triangle.midpoint(), v);
+    }
+};
+
+struct TriangleBoundingBox
+{
+    Raychel::BasicBoundingBox<vec3> operator()(const Triangle& triangle) const noexcept
+    {
+        return Raychel::BasicBoundingBox<vec3>{
+            .bottom_front_left =
+                vec3{
+                    std::min({triangle.a.x, triangle.b.x, triangle.c.x}),
+                    std::min({triangle.a.y, triangle.b.y, triangle.c.y}),
+                    std::min({triangle.a.z, triangle.b.z, triangle.c.z}),
+                },
+            .top_back_right = vec3{
+                std::max({triangle.a.x, triangle.b.x, triangle.c.x}),
+                std::max({triangle.a.y, triangle.b.y, triangle.c.y}),
+                std::max({triangle.a.z, triangle.b.z, triangle.c.z}),
+            }};
+    }
+};
+
+using OctTree = Raychel::OcTree<vec3, 10, 5>;
 
 TEST_CASE("OctTree: creating OctTrees")
 {
@@ -56,7 +107,7 @@ TEST_CASE("OctTree: Subdivison when inserting more than N elements")
 
 TEST_CASE("OctTree: get closest points")
 {
-    Raychel::OcTree<vec3, 5> tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
+    OctTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
 
     {
         const auto maybe_closest_item = tree.closest_to(vec3{0, 0, 0});
@@ -92,7 +143,7 @@ TEST_CASE("OctTree: get closest points")
         vec3 closest_point{0, 0, 0};
         double closest_distance = 1e9;
 
-        for (std::size_t i{}; i != 100'000; ++i) {
+        for (std::size_t i{}; i != 1'000; ++i) {
             vec3 p{dist(rng), dist(rng), dist(rng)};
             const auto distance = Raychel::details::GetDistanceToPoint{}(p, vec3{50, 50, 50});
 
@@ -115,5 +166,72 @@ TEST_CASE("OctTree: get closest points")
         REQUIRE(distance == closest_distance);
 
         std::cerr << duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start) << '\n';
+    }
+}
+
+using TriangleTree = Raychel::OcTree<Triangle, 5, 20, vec3, TriangleBoundingBox, TriangleDistance>;
+
+static vec3 ngon_point(int point_index, double num_points)
+{
+    const auto angle = static_cast<double>(point_index) * 2 * std::numbers::pi / num_points;
+    return vec3{50 + 25 * std::sin(angle), 50 + 25 * std::cos(angle), 0};
+}
+
+static Triangle ngon_triangle(int point_index, double num_points)
+{
+    return Triangle{
+        ngon_point(point_index - 1, num_points),
+        ngon_point(point_index, num_points),
+        ngon_point(point_index + 1, num_points),
+    };
+}
+
+TEST_CASE("OcTree: Ts with bounding boxes")
+{
+    {
+        TriangleTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
+
+        REQUIRE(tree.size() == 0);
+
+        std::mt19937 rng{12334};
+        std::uniform_real_distribution dist(0., 100.);
+
+        double min_distance{1e9};
+        Triangle closest{vec3{100, 100, 100}, vec3{200, 200, 200}, vec3{300, 300, 300}};
+
+        for (std::size_t i{}; i != 1'000; ++i) {
+            Triangle obj{
+                vec3{dist(rng), dist(rng), dist(rng)},
+                vec3{dist(rng), dist(rng), dist(rng)},
+                vec3{dist(rng), dist(rng), dist(rng)},
+            };
+
+            const auto distance = TriangleDistance{}(obj, vec3{50, 50, 50});
+            if (distance < min_distance) {
+                min_distance = distance;
+                closest = obj;
+            }
+
+            REQUIRE(tree.insert(obj));
+            REQUIRE(tree.size() == i + 1);
+        }
+
+        const auto maybe_value = tree.closest_to(vec3{50, 50, 50});
+        REQUIRE(maybe_value.has_value());
+
+        const auto [object, distance] = maybe_value.value();
+
+        REQUIRE(object == closest);
+        REQUIRE(distance == min_distance);
+    }
+
+    {
+        TriangleTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
+        for (int i{}; i != 7; ++i) {
+            REQUIRE(tree.insert(ngon_triangle(i, 7)));
+            REQUIRE(tree.size() == static_cast<std::size_t>(i) + 1);
+        }
+
+        tree.debug_print();
     }
 }

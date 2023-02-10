@@ -283,7 +283,7 @@ namespace Raychel {
             ValueType distance;
         };
 
-        template <std::size_t BucketSize, Coordinate Coordinate, typename GetDistance, typename Tree>
+        template <std::size_t BucketSize, std::size_t MaxDepth, Coordinate Coordinate, typename GetDistance, typename Tree>
         class OctNode
         {
             using BoundingBox = BasicBoundingBox<Coordinate>;
@@ -293,30 +293,25 @@ namespace Raychel {
             public:
                 constexpr IndexContainer() = default;
 
-                RAYCHEL_MAKE_DEFAULT_COPY(IndexContainer)
-                RAYCHEL_MAKE_DEFAULT_MOVE(IndexContainer)
-
                 [[nodiscard]] constexpr bool is_full() const noexcept
                 {
-                    return next_slot_ == BucketSize;
+                    return indecies_.size() >= BucketSize;
                 }
 
                 [[nodiscard]] constexpr std::size_t size() const noexcept
                 {
-                    return next_slot_;
+                    return indecies_.size();
                 }
 
                 constexpr void insert(std::size_t index_in_tree, const BoundingBox& where) noexcept
                 {
-                    indecies_[next_slot_] = index_in_tree;
-                    new (_locations() + next_slot_) BoundingBox{where};
-
-                    ++next_slot_;
+                    indecies_.push_back(index_in_tree);
+                    bounding_boxes_.push_back(where);
                 }
 
                 [[nodiscard]] constexpr BoundingBox bounding_box_at(std::size_t index) const noexcept
                 {
-                    return _locations()[index];
+                    return bounding_boxes_[index];
                 }
 
                 [[nodiscard]] constexpr std::size_t index_at(std::size_t index) const noexcept
@@ -331,46 +326,23 @@ namespace Raychel {
 
                 [[nodiscard]] constexpr auto end() const noexcept
                 {
-                    return begin() + next_slot_;
+                    return indecies_.end();
                 }
-
-                ~IndexContainer() noexcept
-                    requires(!std::is_trivially_destructible_v<BoundingBox>)
-                {
-                    for (std::size_t i{}; i != BucketSize; ++i) {
-                        _locations()[i].~BoundingBox();
-                    }
-                }
-
-                ~IndexContainer() noexcept
-                    requires(std::is_trivially_destructible_v<BoundingBox>)
-                = default;
 
             private:
-                [[nodiscard]] constexpr const BoundingBox* _locations() const noexcept
-                {
-                    return reinterpret_cast<const BoundingBox*>(&bounding_boxes_);
-                }
-
-                [[nodiscard]] constexpr BoundingBox* _locations() noexcept
-                {
-                    return reinterpret_cast<BoundingBox*>(&bounding_boxes_);
-                }
-
-                std::array<std::size_t, BucketSize> indecies_{};
-                std::aligned_storage_t<sizeof(BoundingBox) * BucketSize> bounding_boxes_{};
-
-                std::size_t next_slot_{};
+                std::vector<std::size_t> indecies_{};
+                std::vector<BoundingBox> bounding_boxes_{};
             };
 
             class ChildContainer
             {
             public:
-                constexpr explicit ChildContainer(std::array<BoundingBox, 8> bounding_boxes, Tree* parent)
+                constexpr explicit ChildContainer(
+                    std::array<BoundingBox, 8> bounding_boxes, Tree* parent, std::size_t children_depth)
                 {
                     nodes_.reserve(8U);
                     for (std::size_t i{}; i != 8; ++i) {
-                        nodes_.emplace_back(bounding_boxes[i], parent);
+                        nodes_.emplace_back(bounding_boxes[i], parent, children_depth);
                     }
                 }
 
@@ -409,11 +381,12 @@ namespace Raychel {
             };
 
         public:
-            explicit constexpr OctNode(BoundingBox bounding_box, Tree* parent)
+            explicit constexpr OctNode(BoundingBox bounding_box, Tree* parent, std::size_t depth)
                 : indecies_or_children_{IndexContainer()},
                   tree_{parent},
                   bounding_box_{std::move(bounding_box)},
-                  midpoint_{midpoint(bounding_box_)}
+                  midpoint_{midpoint(bounding_box_)},
+                  depth_{depth}
             {}
 
             [[nodiscard]] constexpr BoundingBox bounding_box() const noexcept
@@ -437,7 +410,7 @@ namespace Raychel {
 
                 IndexContainer& bucket = std::get<IndexContainer>(indecies_or_children_);
 
-                if (bucket.is_full()) {
+                if (bucket.is_full() && depth_ < MaxDepth) {
                     _subdivide();
                     _insert_into_children(index_in_tree, where);
                     return;
@@ -604,7 +577,7 @@ namespace Raychel {
 
                 //Create children
                 // Create 8 children, each with its own subdivision of the bounding box
-                ChildContainer children{subdivide_bounding_box(bounding_box_, midpoint_), tree_};
+                ChildContainer children{subdivide_bounding_box(bounding_box_, midpoint_), tree_, depth_ + 1};
 
                 // Put the items into the children using their coordinates
                 // TODO: try doing this in one step while initializing the children
@@ -625,6 +598,7 @@ namespace Raychel {
             BoundingBox bounding_box_;
             Coordinate midpoint_;
             std::size_t size_{};
+            std::size_t depth_{};
 
             GetDistance _get_distance{};
         };
@@ -649,13 +623,13 @@ namespace Raychel {
     }
 
     template <
-        typename T, std::size_t BucketSize = 10, Coordinate Coordinate = T,
+        typename T, std::size_t BucketSize = 10, std::size_t MaxDepth = 20, Coordinate Coordinate = T,
         std::invocable<const T&> GetBoundingBox = details::BoundingBoxFromCoordinate,
         std::invocable<const T&, const Coordinate&> GetDistance = details::GetDistanceToPoint>
         requires(std::is_invocable_r_v<BasicBoundingBox<Coordinate>, GetBoundingBox, const T&>) && std::copyable<T>
     class OcTree
     {
-        using Node = details::OctNode<BucketSize, Coordinate, GetDistance, OcTree>;
+        using Node = details::OctNode<BucketSize, MaxDepth, Coordinate, GetDistance, OcTree>;
         using BoundingBox = BasicBoundingBox<Coordinate>;
 
         friend Node;
@@ -669,16 +643,14 @@ namespace Raychel {
 
     public:
         constexpr OcTree(const Coordinate& a, const Coordinate& b, std::vector<T> items = {})
-            : root_{make_bounding_box(a, b), this}, elements_(std::move(items))
+            : root_{make_bounding_box(a, b), this, 0U}, elements_(std::move(items))
         {
             _build_from_items();
         }
 
         constexpr explicit OcTree(std::pair<Coordinate, Coordinate> bounding_box, std::vector<T> items = {})
-            : root_{make_bounding_box(bounding_box.first, bounding_box.second), this}, elements_(std::move(items))
-        {
-            _build_from_items();
-        }
+            : OcTree{bounding_box.first, bounding_box.second, std::move(items)}
+        {}
 
         constexpr OcTree(const OcTree& other) : root_{other.root_}, elements_{other.elements_}
         {
@@ -775,6 +747,8 @@ namespace Raychel {
         {
             return elements_;
         }
+
+        constexpr ~OcTree() noexcept = default;
 
     private:
         [[nodiscard]] constexpr Node& _root() noexcept
