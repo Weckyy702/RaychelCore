@@ -48,9 +48,11 @@
 #endif
 
 #define RAYCHEL_ASSERT(exp)                                                                                                      \
-    if (!(exp)) {                                                                                                                \
-        RAYCHEL_TERMINATE("Assertion '" RAYCHEL_STRINGIFY(exp) "' failed!");                                                     \
-    }
+    do {                                                                                                                         \
+        if (!(exp)) [[unlikely]] {                                                                                               \
+            RAYCHEL_TERMINATE("Assertion '" RAYCHEL_STRINGIFY(exp) "' failed!");                                                 \
+        }                                                                                                                        \
+    } while (0);
 
 #define RAYCHEL_ASSERT_NOT_REACHED RAYCHEL_TERMINATE("Assertion failed! Expected to not execute ", __FILE__, ":", __LINE__)
 
