@@ -169,8 +169,6 @@ TEST_CASE("OctTree: get closest points")
     }
 }
 
-using TriangleTree = Raychel::OcTree<Triangle, 5, 20, vec3, TriangleBoundingBox, TriangleDistance>;
-
 static vec3 ngon_point(int point_index, double num_points)
 {
     const auto angle = static_cast<double>(point_index) * 2 * std::numbers::pi / num_points;
@@ -188,6 +186,18 @@ static Triangle ngon_triangle(int point_index, double num_points)
 
 TEST_CASE("OcTree: Ts with bounding boxes")
 {
+    using TriangleTree = Raychel::OcTree<Triangle, 10, 2, vec3, TriangleBoundingBox, TriangleDistance>;
+
+    SECTION("Triangles sharing points")
+    {
+        TriangleTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
+        for (int i{}; i != 7; ++i) {
+            REQUIRE(tree.insert(ngon_triangle(i, 7)));
+            REQUIRE(tree.size() == static_cast<std::size_t>(i) + 1);
+        }
+    }
+
+    SECTION("Get closest neighbor")
     {
         TriangleTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
 
@@ -216,22 +226,14 @@ TEST_CASE("OcTree: Ts with bounding boxes")
             REQUIRE(tree.size() == i + 1);
         }
 
+        tree.debug_print();
+
         const auto maybe_value = tree.closest_to(vec3{50, 50, 50});
         REQUIRE(maybe_value.has_value());
 
         const auto [object, distance] = maybe_value.value();
 
-        REQUIRE(object == closest);
         REQUIRE(distance == min_distance);
-    }
-
-    {
-        TriangleTree tree{vec3{0, 0, 0}, vec3{100, 100, 100}};
-        for (int i{}; i != 7; ++i) {
-            REQUIRE(tree.insert(ngon_triangle(i, 7)));
-            REQUIRE(tree.size() == static_cast<std::size_t>(i) + 1);
-        }
-
-        tree.debug_print();
+        REQUIRE(object == closest);
     }
 }

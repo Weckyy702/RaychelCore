@@ -193,11 +193,19 @@ namespace Raychel {
         }
 
         template <Coordinate Coord>
-        [[nodiscard]] constexpr bool overlaps(const BasicBoundingBox<Coord>& a, const BasicBoundingBox<Coord>& b)
+        [[nodiscard]] constexpr bool overlaps_part(const BasicBoundingBox<Coord>& a, const BasicBoundingBox<Coord>& b)
         {
+            //TODO: can overlapping tests be done more efficiently with some bitwise magic?
             return contains(b, get_corner<0>(a)) || contains(b, get_corner<1>(a)) || contains(b, get_corner<2>(a)) ||
                    contains(b, get_corner<3>(a)) || contains(b, get_corner<4>(a)) || contains(b, get_corner<5>(a)) ||
                    contains(b, get_corner<6>(a)) || contains(b, get_corner<7>(a));
+        }
+
+        template <Coordinate Coord>
+        [[nodiscard]] constexpr bool overlaps(const BasicBoundingBox<Coord>& a, const BasicBoundingBox<Coord>& b)
+        {
+            //TODO: this is really slow :(
+            return overlaps_part(a, b) || overlaps_part(b, a);
         }
 
         template <std::size_t ChildIndex, Coordinate Coord>
@@ -255,19 +263,25 @@ namespace Raychel {
         template <Coordinate T>
         using ElementType = std::remove_cvref_t<decltype(get_x<T>(std::declval<const T&>()))>;
 
+        template <typename T>
+        [[nodiscard]] constexpr T sq(T x)
+        {
+            return x * x;
+        }
+
+        template <Coordinate Coord>
+        [[nodiscard]] constexpr auto distance_squared(const Coord& a, const Coord& b)
+        {
+            return sq(get_x(a) - get_x(b)) + sq(get_y(a) - get_y(b)) + sq(get_z(a) - get_z(b));
+        }
+
         struct GetDistanceToPoint
         {
-            template <typename T>
-            constexpr auto sq(T x) const noexcept
-            {
-                return x * x;
-            }
-
             template <Coordinate Coord, typename ValueType = ElementType<Coord>>
                 requires std::floating_point<ValueType>
             [[nodiscard]] constexpr ValueType operator()(const Coord& a, const Coord& b) const noexcept
             {
-                return std::sqrt(sq(get_x(a) - get_x(b)) + sq(get_y(a) - get_y(b)) + sq(get_z(a) - get_z(b)));
+                return std::sqrt(distance_squared(a, b));
             }
         };
 
@@ -287,6 +301,7 @@ namespace Raychel {
         class OctNode
         {
             using BoundingBox = BasicBoundingBox<Coordinate>;
+            using Number = ElementType<Coordinate>;
 
             class IndexContainer
             {
@@ -382,10 +397,14 @@ namespace Raychel {
 
         public:
             explicit constexpr OctNode(BoundingBox bounding_box, Tree* parent, std::size_t depth)
-                : indecies_or_children_{IndexContainer()},
-                  tree_{parent},
+                : tree_{parent},
                   bounding_box_{std::move(bounding_box)},
                   midpoint_{midpoint(bounding_box_)},
+                  radius_squared_{std::max({
+                      sq(get_x(bounding_box_.top_back_right) - get_x(bounding_box_.bottom_front_left)),
+                      sq(get_y(bounding_box_.top_back_right) - get_y(bounding_box_.bottom_front_left)),
+                      sq(get_z(bounding_box_.top_back_right) - get_z(bounding_box_.bottom_front_left)),
+                  })},
                   depth_{depth}
             {}
 
@@ -425,26 +444,23 @@ namespace Raychel {
             }
 
             constexpr void
-            collect_closest(const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
+            find_closest(const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
             {
                 //Bail out if this node is empty
-                if (size() == 0U)
+                if (size() == 0U) [[unlikely]]
                     return;
 
                 if (!has_children()) {
-                    _collect_own_indecies(where, maybe_closest_item);
+                    _find_closest(where, maybe_closest_item);
                     return;
                 }
 
-                //Add only the children neighbouring that point
                 const auto& children = std::get<ChildContainer>(indecies_or_children_);
-                const auto [care_mask, side_mask] = _calculate_children_masks(where);
 
-                for (std::size_t i{}; i != 8; ++i) {
-                    //The index encodes a location. See _child_index_for
-
-                    if (((i ^ side_mask) & care_mask) == care_mask) {
-                        children[i].collect_closest(where, maybe_closest_item);
+                for (const auto& child : children) {
+                    const auto child_distance_squared = distance_squared(child.midpoint_, where);
+                    if (child_distance_squared <= radius_squared_) [[unlikely]] {
+                        child.find_closest(where, maybe_closest_item);
                     }
                 }
             }
@@ -494,70 +510,35 @@ namespace Raychel {
             {
                 tree_ = parent;
 
-                if (has_children()) {
-                    auto& children = std::get<ChildContainer>(indecies_or_children_);
+                if (!has_children()) {
+                    return;
+                }
 
-                    for (auto& child : children) {
-                        child.update_parent(parent);
-                    }
+                auto& children = std::get<ChildContainer>(indecies_or_children_);
+                for (auto& child : children) {
+                    child.update_parent(parent);
                 }
             }
 
         private:
-            constexpr void _collect_own_indecies(
-                const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
+            constexpr void
+            _find_closest(const Coordinate& where, std::optional<ClosestItem<Coordinate>>& maybe_closest_item) const noexcept
             {
                 const auto& indecies = std::get<IndexContainer>(indecies_or_children_);
 
-                for (std::size_t i{}; i != indecies.size(); ++i) {
-                    const auto index = indecies.index_at(i);
-
-                    const auto distance = _get_distance(tree_->elements_.at(index), where);
+                for (const auto index : indecies) {
+                    const auto distance = _get_distance(tree_->elements_[index], where);
 
                     if (!maybe_closest_item.has_value()) [[unlikely]] {
                         maybe_closest_item.emplace(index, distance);
                         continue;
                     }
 
-                    if (distance < maybe_closest_item->distance) {
+                    if (distance < maybe_closest_item->distance) [[unlikely]] {
                         maybe_closest_item->index = index;
                         maybe_closest_item->distance = distance;
                     }
                 }
-            }
-
-            [[nodiscard]] constexpr auto _calculate_children_masks(const Coordinate& where) const noexcept
-            {
-                //!!BITMAGIC!!
-                //returns two binary numbers, where the second one dictates if the point is inside or outside this cell with layout
-                // 00000zyx
-                //The first number indicates what side of the midpoint the point lies with 0 meaning less and layout
-                // 00000zyx
-
-                std::uint8_t care_mask{7};
-                std::uint8_t side_mask{};
-
-                if (in_range(get_x(where), get_x(bounding_box_.bottom_front_left), get_x(bounding_box_.top_back_right))) {
-                    care_mask &= 0b110U;
-                }
-                if (in_range(get_y(where), get_y(bounding_box_.bottom_front_left), get_y(bounding_box_.top_back_right))) {
-                    care_mask &= 0b101U;
-                }
-                if (in_range(get_z(where), get_z(bounding_box_.bottom_front_left), get_z(bounding_box_.top_back_right))) {
-                    care_mask &= 0b011U;
-                }
-
-                if (get_x(where) <= get_x(midpoint_)) {
-                    side_mask |= 1U;
-                }
-                if (get_y(where) <= get_y(midpoint_)) {
-                    side_mask |= 2U;
-                }
-                if (get_z(where) <= get_z(midpoint_)) {
-                    side_mask |= 4U;
-                }
-
-                return std::make_pair(care_mask, side_mask);
             }
 
             constexpr void _insert_into_children(std::size_t index_in_tree, const BoundingBox& where) noexcept
@@ -581,15 +562,16 @@ namespace Raychel {
 
                 // Put the items into the children using their coordinates
                 // TODO: try doing this in one step while initializing the children
-                for (std::size_t i{}; i != BucketSize; ++i) {
-                    const auto where = items.bounding_box_at(i);
-                    for (std::size_t j{}; j != 8U; ++j) {
-                        if (overlaps(where, children[j].bounding_box_))
-                            children[j].insert(items.index_at(i), where);
+                for (std::size_t i{}; i != items.size(); ++i) {
+                    const auto& where = items.bounding_box_at(i);
+
+                    for (auto& child : children) {
+                        if (overlaps(where, child.bounding_box_))
+                            child.insert(items.index_at(i), where);
                     }
                 }
 
-                indecies_or_children_ = std::move(children);
+                indecies_or_children_.template emplace<ChildContainer>(std::move(children));
             }
 
             std::variant<IndexContainer, ChildContainer> indecies_or_children_{};
@@ -597,6 +579,8 @@ namespace Raychel {
 
             BoundingBox bounding_box_;
             Coordinate midpoint_;
+            Number radius_squared_;
+
             std::size_t size_{};
             std::size_t depth_{};
 
@@ -723,14 +707,14 @@ namespace Raychel {
         [[nodiscard]] constexpr auto closest_to(const Coordinate& where) const noexcept
             -> std::optional<ClosestItem<const T&, details::ElementType<Coordinate>>>
         {
-            if (size() == 0)
+            if (size() == 0) [[unlikely]]
                 return std::nullopt;
 
             std::optional<details::ClosestItem<Coordinate>> closest_item{};
 
-            _root().collect_closest(where, closest_item);
+            _root().find_closest(where, closest_item);
 
-            if (!closest_item.has_value())
+            if (!closest_item.has_value()) [[unlikely]]
                 return std::nullopt;
 
             const auto [index, distance] = closest_item.value();
